@@ -6,3 +6,6 @@ training/models
 dataset
 cache
 checkpoints
+
+# Playground
+playground/model
