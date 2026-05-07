@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrameFind Playground</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #111;
+    color: #eee;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 24px;
+    padding: 24px;
+  }
+
+  h1 { font-size: 20px; font-weight: 600; color: #fff; }
+
+  #status {
+    font-size: 13px;
+    color: #888;
+  }
+
+  .video-container {
+    position: relative;
+    width: 480px;
+    max-width: 100%;
+    aspect-ratio: 4/3;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  #badge {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 28px;
+    border-radius: 100px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    display: none;
+    white-space: nowrap;
+  }
+
+  #badge.yes { background: rgba(80,220,100,0.92); color: #000; }
+  #badge.no  { background: rgba(255,80,80,0.92);  color: #fff; }
+  #badge.noface { background: rgba(180,180,0,0.92); color: #000; }
+
+  #conf {
+    font-size: 14px;
+    color: #aaa;
+    min-height: 20px;
+  }
+
+  button {
+    padding: 12px 36px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #fff;
+    color: #111;
+    transition: opacity 0.15s;
+  }
+
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  button:not(:disabled):hover { opacity: 0.85; }
+
+  #btnStart.running { background: #ff5555; color: #fff; }
+</style>
+</head>
+<body>
+
+<h1>FrameFind — Glasses Detector</h1>
+<div id="status">Loading models…</div>
+
+<div class="video-container">
+  <video id="video" autoplay muted playsinline></video>
+  <div id="badge">—</div>
+</div>
+
+<div id="conf"></div>
+<button id="btnStart" disabled>Start camera</button>
+
+<canvas id="offscreen" style="display:none"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
+<script type="module">
+const { FaceLandmarker, FilesetResolver } =
+  await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+
+const ROI_SIZE = 112;
+const THRESHOLD = 0.35;
+const MEAN = [0.485, 0.456, 0.406];
+const STD  = [0.229, 0.224, 0.225];
+
+// same landmark indices as Python preprocess.py
+const EYE_REGION_IDX = [
+  33, 133, 159, 145, 158, 153, 144, 163, 7, 246,
+  362, 263, 386, 374, 385, 380, 373, 390, 249, 466,
+  70, 63, 105, 66, 107, 336, 296, 334, 293, 300,
+  168, 6, 197, 195,
+];
+const PAD = 0.25;
+
+const video     = document.getElementById('video');
+const badge     = document.getElementById('badge');
+const conf      = document.getElementById('conf');
+const statusEl  = document.getElementById('status');
+const btnStart  = document.getElementById('btnStart');
+const offscreen = document.getElementById('offscreen');
+const offCtx    = offscreen.getContext('2d', { willReadFrequently: true });
+
+let onnxSession    = null;
+let faceLandmarker = null;
+let stream         = null;
+let running        = false;
+
+ort.env.wasm.wasmPaths  = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+ort.env.wasm.numThreads = 1;
+
+// ── init both models ─────────────────────────
+async function init() {
+  try {
+    statusEl.textContent = 'Loading face landmark model…';
+    const filesetResolver = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+    );
+    faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+        delegate: 'GPU',
+      },
+      runningMode: 'VIDEO',
+      numFaces: 1,
+      minFaceDetectionConfidence: 0.3,
+      minFacePresenceConfidence: 0.3,
+    });
+
+    statusEl.textContent = 'Loading glasses model…';
+    onnxSession = await ort.InferenceSession.create('./model/glasses.onnx', {
+      executionProviders: ['wasm'],
+    });
+
+    statusEl.textContent = 'Models ready';
+    btnStart.disabled = false;
+  } catch(e) {
+    statusEl.textContent = 'Load error: ' + e.message;
+    console.error(e);
+  }
+}
+
+// ── extract eye ROI from video frame ─────────
+function extractEyeROI(landmarks, vw, vh) {
+  const pts = EYE_REGION_IDX.map(i => ({
+    x: landmarks[i].x * vw,
+    y: landmarks[i].y * vh,
+  }));
+  const xs = pts.map(p => p.x);
+  const ys = pts.map(p => p.y);
+  const x0r = Math.min(...xs), x1r = Math.max(...xs);
+  const y0r = Math.min(...ys), y1r = Math.max(...ys);
+  const bw = x1r - x0r, bh = y1r - y0r;
+  const side = Math.max(bw, bh) * (1 + PAD);
+  const cx = (x0r + x1r) / 2, cy = (y0r + y1r) / 2;
+  const x0 = Math.max(0, cx - side / 2);
+  const y0 = Math.max(0, cy - side / 2);
+  const x1 = Math.min(vw, cx + side / 2);
+  const y1 = Math.min(vh, cy + side / 2);
+  if (x1 <= x0 || y1 <= y0) return null;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+// ── preprocess ROI → CHW float32 tensor ──────
+function preprocessROI(roi) {
+  offscreen.width = offscreen.height = ROI_SIZE;
+  offCtx.drawImage(video, roi.x, roi.y, roi.w, roi.h, 0, 0, ROI_SIZE, ROI_SIZE);
+  const px = offCtx.getImageData(0, 0, ROI_SIZE, ROI_SIZE).data;
+  const t = new Float32Array(3 * ROI_SIZE * ROI_SIZE);
+  for (let i = 0; i < ROI_SIZE * ROI_SIZE; i++) {
+    t[i]                       = (px[i*4]   / 255 - MEAN[0]) / STD[0];
+    t[ROI_SIZE*ROI_SIZE + i]   = (px[i*4+1] / 255 - MEAN[1]) / STD[1];
+    t[2*ROI_SIZE*ROI_SIZE + i] = (px[i*4+2] / 255 - MEAN[2]) / STD[2];
+  }
+  return t;
+}
+
+// ── center-crop fallback (no face detected) ──
+function preprocessCenterCrop() {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const sq = Math.min(vw, vh);
+  const sx = (vw - sq) / 2, sy = (vh - sq) / 2;
+  offscreen.width = offscreen.height = ROI_SIZE;
+  offCtx.drawImage(video, sx, sy, sq, sq, 0, 0, ROI_SIZE, ROI_SIZE);
+  const px = offCtx.getImageData(0, 0, ROI_SIZE, ROI_SIZE).data;
+  const t = new Float32Array(3 * ROI_SIZE * ROI_SIZE);
+  for (let i = 0; i < ROI_SIZE * ROI_SIZE; i++) {
+    t[i]                       = (px[i*4]   / 255 - MEAN[0]) / STD[0];
+    t[ROI_SIZE*ROI_SIZE + i]   = (px[i*4+1] / 255 - MEAN[1]) / STD[1];
+    t[2*ROI_SIZE*ROI_SIZE + i] = (px[i*4+2] / 255 - MEAN[2]) / STD[2];
+  }
+  return t;
+}
+
+// ── smoothing state ──────────────────────────
+const SMOOTH_N      = 8;   // rolling window size
+const NO_FACE_GRACE = 6;   // frames without face before showing "No face"
+const probHistory   = [];
+let noFaceFrames    = 0;
+
+// ── inference loop ───────────────────────────
+let lastVideoTime = -1;
+
+async function loop() {
+  if (!running || !onnxSession) return;
+
+  let tensor;
+  let faceFound = false;
+
+  if (faceLandmarker && video.currentTime !== lastVideoTime) {
+    lastVideoTime = video.currentTime;
+    const result = faceLandmarker.detectForVideo(video, performance.now());
+    if (result.faceLandmarks && result.faceLandmarks.length > 0) {
+      faceFound = true;
+      noFaceFrames = 0;
+      const vw = video.videoWidth, vh = video.videoHeight;
+      const roi = extractEyeROI(result.faceLandmarks[0], vw, vh);
+      tensor = roi ? preprocessROI(roi) : preprocessCenterCrop();
+    } else {
+      noFaceFrames++;
+    }
+  }
+
+  if (faceFound) {
+    const input = new ort.Tensor('float32', tensor, [1, 3, ROI_SIZE, ROI_SIZE]);
+    const out   = await onnxSession.run({ input });
+    const logit = out.logit.data[0];
+    const prob  = 1 / (1 + Math.exp(-logit));
+
+    probHistory.push(prob);
+    if (probHistory.length > SMOOTH_N) probHistory.shift();
+  }
+
+  const smoothProb = probHistory.length
+    ? probHistory.reduce((a, b) => a + b, 0) / probHistory.length
+    : 0;
+  const glasses = smoothProb >= THRESHOLD;
+
+  badge.style.display = 'block';
+  if (noFaceFrames >= NO_FACE_GRACE || probHistory.length === 0) {
+    badge.textContent = 'No face';
+    badge.className   = 'noface';
+    conf.textContent  = '';
+  } else {
+    badge.textContent = glasses ? '🕶 Glasses' : 'No glasses';
+    badge.className   = glasses ? 'yes' : 'no';
+    conf.textContent  = `Confidence: ${(smoothProb * 100).toFixed(1)}%`;
+  }
+
+  if (running) requestAnimationFrame(loop);
+}
+
+// ── button ───────────────────────────────────
+btnStart.addEventListener('click', async () => {
+  if (stream) {
+    running = false;
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    video.srcObject = null;
+    badge.style.display = 'none';
+    conf.textContent = '';
+    probHistory.length = 0;
+    noFaceFrames = 0;
+    btnStart.textContent = 'Start camera';
+    btnStart.classList.remove('running');
+    statusEl.textContent = 'Models ready';
+  } else {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 640, height: 480 }
+      });
+      video.srcObject = stream;
+      await new Promise(r => video.onloadedmetadata = r);
+      running = true;
+      btnStart.textContent = 'Stop camera';
+      btnStart.classList.add('running');
+      statusEl.textContent = 'Running…';
+      loop();
+    } catch(e) {
+      statusEl.textContent = 'Camera error: ' + e.message;
+    }
+  }
+});
+
+init();
+</script>
+</body>
+</html>
