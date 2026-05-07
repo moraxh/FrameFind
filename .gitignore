@@ -1,11 +1,7 @@
 venv
 __pycache__
 
-# Training
-training/models
-dataset
-cache
-checkpoints
-
-# Playground
-playground/model
+# Node
+node_modules
+packages/*/dist
+apps/*/dist

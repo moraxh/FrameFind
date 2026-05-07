@@ -1,0 +1,46 @@
+{
+  "name": "@framefind/core",
+  "version": "0.1.0",
+  "description": "Glasses detection core — browser and Node.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/browser/index.js",
+      "types": "./dist/browser/index.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser/index.js",
+      "types": "./dist/browser/index.d.ts"
+    },
+    "./node": {
+      "import": "./dist/node/index.js",
+      "types": "./dist/node/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.browser.json && tsc -p tsconfig.node.json",
+    "dev": "tsc -p tsconfig.browser.json --watch",
+    "typecheck": "tsc -p tsconfig.browser.json --noEmit && tsc -p tsconfig.node.json --noEmit"
+  },
+  "dependencies": {
+    "@framefind/utils": "workspace:*"
+  },
+  "peerDependencies": {
+    "onnxruntime-web": ">=1.18.0",
+    "onnxruntime-node": ">=1.18.0"
+  },
+  "peerDependenciesMeta": {
+    "onnxruntime-web": { "optional": true },
+    "onnxruntime-node": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "onnxruntime-node": "^1.18.0",
+    "onnxruntime-web": "^1.18.0",
+    "typescript": "^5.5.0"
+  }
+}

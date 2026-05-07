@@ -1,0 +1,7 @@
+{
+  "name": "FrameFind Glasses Detection Model",
+  "version": "1.0.0",
+  "files": {
+    "model": "model.onnx"
+  }
+}
