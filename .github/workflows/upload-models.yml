@@ -1,17 +1,18 @@
 name: Upload models to R2
-
 on:
   push:
     branches: [main, master]
     paths:
       - "models/**"
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 
 
       - uses: actions/setup-node@v4
         with:
@@ -20,30 +21,29 @@ jobs:
       - name: Install wrangler
         run: npm install -g wrangler@latest
 
-      - name: Upload changed model files
+      - name: Upload models
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          # Get list of changed files in models/ vs previous commit
-          git diff --name-only HEAD~1 HEAD -- models/ | while read file; do
-            if [ -f "$file" ]; then
-              # Strip leading "models/" to get the R2 key
-              key="${file#models/}"
-              echo "Uploading $file → r2://framefind-models/$key"
-              wrangler r2 object put "framefind-models/$key" \
-                --file "$file" \
-                --content-type "application/octet-stream"
-            fi
-          done
+          IS_FIRST_PUSH="${{ github.event.before == '0000000000000000000000000000000000000000' }}"
+          IS_MANUAL="${{ github.event_name == 'workflow_dispatch' }}"
 
-      - name: Upload all models (first push / force)
-        if: ${{ github.event.before == '0000000000000000000000000000000000000000' }}
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          find models/ -type f | while read file; do
+          if [ "$IS_FIRST_PUSH" = "true" ] || [ "$IS_MANUAL" = "true" ]; then
+            echo "Uploading all model files..."
+            FILES=$(find models/ -type f)
+          else
+            echo "Uploading only changed files..."
+            FILES=$(git diff --name-only HEAD~1 HEAD -- models/ | grep -v '^$')
+          fi
+
+          if [ -z "$FILES" ]; then
+            echo "No files to upload."
+            exit 0
+          fi
+
+          echo "$FILES" | while read file; do
+            [ -f "$file" ] || continue
             key="${file#models/}"
             echo "Uploading $file → r2://framefind-models/$key"
             wrangler r2 object put "framefind-models/$key" \
