@@ -10,9 +10,6 @@ export function Navbar() {
           <span className="font-medium text-neutral-100 tracking-tight">FrameFind</span>
         </div>
         <nav className="flex items-center gap-6">
-          <a href="/demo" className="text-sm text-neutral-400 hover:text-cyan-300 transition-colors font-medium">
-            Demo
-          </a>
           <a href="#docs" className="text-sm text-neutral-400 hover:text-neutral-100 transition-colors">
             Docs
           </a>

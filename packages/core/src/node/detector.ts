@@ -1,4 +1,8 @@
 import type { InferenceSession } from "onnxruntime-node";
+import { createWriteStream } from "fs";
+import { mkdir } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
 import {
   type DetectionResult,
   DEFAULT_THRESHOLD,
@@ -10,7 +14,7 @@ import {
 } from "@framefind/utils";
 
 export type GlassesDetectorNodeOptions = {
-  modelPath: string;
+  modelPath?: string;
   threshold?: number;
   smoothingWindow?: number;
 };
@@ -23,14 +27,46 @@ export class GlassesDetectorNode {
   private modelPath: string;
 
   constructor(opts: GlassesDetectorNodeOptions) {
-    this.modelPath = opts.modelPath;
+    this.modelPath = opts.modelPath ?? "https://cdn.framefind.moraxh.dev/glasses/v1/glasses.onnx";
     this.threshold = opts.threshold ?? DEFAULT_THRESHOLD;
     this.smoothN = opts.smoothingWindow ?? DEFAULT_SMOOTH_N;
   }
 
+  private async ensureLocalModel(modelPathOrUrl: string): Promise<string> {
+    if (!modelPathOrUrl.startsWith("http://") && !modelPathOrUrl.startsWith("https://")) {
+      return modelPathOrUrl;
+    }
+
+    const cacheDir = join(tmpdir(), "framefind-models");
+    await mkdir(cacheDir, { recursive: true });
+    const fileName = "glasses.onnx";
+    const cachePath = join(cacheDir, fileName);
+
+    try {
+      const fs = await import("fs");
+      fs.statSync(cachePath);
+      return cachePath;
+    } catch {
+      const response = await fetch(modelPathOrUrl);
+      if (!response.ok) throw new Error(`Failed to fetch model: ${response.statusText}`);
+
+      return new Promise((resolve, reject) => {
+        const stream = createWriteStream(cachePath);
+        if (response.body) {
+          response.body.pipe(stream);
+          stream.on("finish", () => resolve(cachePath));
+          stream.on("error", reject);
+        } else {
+          reject(new Error("No response body"));
+        }
+      });
+    }
+  }
+
   async load(): Promise<void> {
+    const localPath = await this.ensureLocalModel(this.modelPath);
     const ort = await import("onnxruntime-node");
-    this.session = await ort.InferenceSession.create(this.modelPath, {
+    this.session = await ort.InferenceSession.create(localPath, {
       executionProviders: ["cpu"],
     });
   }

@@ -11,7 +11,7 @@ import {
 } from "@framefind/utils";
 
 export type GlassesDetectorOptions = {
-  modelUrl: string;
+  modelUrl?: string;
   wasmPaths?: string;
   threshold?: number;
   smoothingWindow?: number;
@@ -28,10 +28,10 @@ export class GlassesDetector {
   private wasmPaths: string;
 
   constructor(opts: GlassesDetectorOptions) {
-    this.modelUrl = opts.modelUrl;
+    this.modelUrl = opts.modelUrl ?? "https://cdn.framefind.moraxh.dev/glasses/v1/glasses.onnx";
     this.threshold = opts.threshold ?? DEFAULT_THRESHOLD;
     this.smoothN = opts.smoothingWindow ?? DEFAULT_SMOOTH_N;
-    this.wasmPaths = opts.wasmPaths ?? "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/";
+    this.wasmPaths = opts.wasmPaths ?? "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.25.1/dist/";
   }
 
   async load(): Promise<void> {

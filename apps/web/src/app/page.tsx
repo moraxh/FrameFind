@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { HeroSection } from "@/components/HeroSection";
 import { ProblemSection } from "@/components/ProblemSection";
+import { DemoSection } from "@/components/DemoSection";
 import { PipelineSection } from "@/components/PipelineSection";
 import { QuickStartSection } from "@/components/QuickStartSection";
 import { MetricsSection } from "@/components/MetricsSection";
@@ -44,6 +45,10 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <HeroSection installCommand={installCommand} />
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="h-px bg-neutral-800/60 w-full" />
+        </div>
+        <DemoSection />
         <div className="max-w-6xl mx-auto px-6">
           <div className="h-px bg-neutral-800/60 w-full" />
         </div>

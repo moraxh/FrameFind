@@ -3,7 +3,7 @@ import { GlassesDetector } from "@framefind/core";
 import type { DetectionResult } from "@framefind/utils";
 
 export type UseGlassesDetectorOptions = {
-  modelUrl: string;
+  modelUrl?: string;
   wasmPaths?: string;
   threshold?: number;
   smoothingWindow?: number;
