@@ -294,7 +294,7 @@ export function DemoSection() {
                   <li className="flex gap-3">
                     <span className="text-cyan-400 font-bold">→</span>
                     <span className="text-neutral-300">
-                      <strong>Instant:</strong> Sub-100ms inference on device
+                      <strong>Instant:</strong> ~27ms median inference on device
                     </span>
                   </li>
                   <li className="flex gap-3">
