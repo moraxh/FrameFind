@@ -1,8 +1,12 @@
 {
   "name": "@framefind/core",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Glasses detection core — browser and Node.js",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moraxh/FrameFind"
+  },
   "exports": {
     ".": {
       "import": "./dist/browser/index.js",

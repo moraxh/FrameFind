@@ -1,6 +1,6 @@
 {
   "name": "@framefind/react",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "React hooks for FrameFind glasses detection",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,6 +19,10 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moraxh/FrameFind"
   },
   "dependencies": {
     "@framefind/core": "workspace:*",
