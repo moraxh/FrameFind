@@ -16,13 +16,29 @@ export function DemoSection() {
   const [mounted, setMounted] = useState(false);
   const detectingRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
+  const noFaceFramesRef = useRef(0);
+  const NO_FACE_GRACE = 6;
 
   const { detect, result, loading: modelLoading } = useGlassesDetector({
     enabled: true,
   });
+  const [displayResult, setDisplayResult] = useState<DetectionResult | null>(null);
 
   useEffect(() => {
-    console.log(result)
+    console.log("Model loading:", modelLoading);
+  }, [modelLoading]);
+
+  useEffect(() => {
+    if (!result) return;
+    if (result.faceDetected) {
+      noFaceFramesRef.current = 0;
+      setDisplayResult(result);
+    } else {
+      noFaceFramesRef.current += 1;
+      if (noFaceFramesRef.current >= NO_FACE_GRACE) {
+        setDisplayResult(result);
+      }
+    }
   }, [result]);
 
   useEffect(() => {
@@ -82,6 +98,8 @@ export function DemoSection() {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    noFaceFramesRef.current = 0;
+    setDisplayResult(null);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -196,19 +214,27 @@ export function DemoSection() {
                   )}
                   <canvas ref={canvasRef} style={{ display: "none" }} />
 
+                  {/* Model loading overlay */}
+                  {modelLoading && (
+                    <div className="absolute inset-0 bg-neutral-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                      <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                      <p className="text-sm text-neutral-300 font-medium">Loading model…</p>
+                    </div>
+                  )}
+
                   {/* Result Overlay */}
-                  {result && (stream || image) && (
+                  {displayResult && (stream || image) && (
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-white/10 px-6 py-3 flex items-center gap-4 rounded-2xl shadow-xl transition-all duration-300">
                       <div className="text-3xl">
-                        {!result.faceDetected ? "🫣" : result.glasses ? "👓" : "😊"}
+                        {!displayResult.faceDetected ? "🫣" : displayResult.glasses ? "👓" : "😊"}
                       </div>
                       <div className="text-left">
-                        <p className={`text-sm font-bold ${!result.faceDetected ? "text-yellow-400" : result.glasses ? "text-cyan-400" : "text-white"}`}>
-                          {!result.faceDetected ? "No Face Detected" : result.glasses ? "Glasses Detected" : "No Glasses"}
+                        <p className={`text-sm font-bold ${!displayResult.faceDetected ? "text-yellow-400" : displayResult.glasses ? "text-cyan-400" : "text-white"}`}>
+                          {!displayResult.faceDetected ? "No Face Detected" : displayResult.glasses ? "Glasses Detected" : "No Glasses"}
                         </p>
-                        {result.faceDetected && (
+                        {displayResult.faceDetected && (
                           <p className="text-xs text-neutral-400">
-                            {(result.probability * 100).toFixed(1)}% confidence
+                            {(displayResult.probability * 100).toFixed(1)}% confidence
                           </p>
                         )}
                       </div>

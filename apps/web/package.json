@@ -10,7 +10,7 @@
     "format": "biome format --write"
   },
   "dependencies": {
-    "@framefind/react": "^0.2.0",
+    "@framefind/react": "^0.2.3",
     "@mediapipe/tasks-vision": "^0.10.35",
     "@tailwindcss/typography": "^0.5.19",
     "lucide-react": "^1.14.0",

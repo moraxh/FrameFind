@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@framefind/core':
-        specifier: 0.2.0
-        version: 0.2.0(onnxruntime-web@1.25.1)
+        specifier: 0.2.3
+        version: 0.2.3(onnxruntime-web@1.25.1)
       '@framefind/utils':
         specifier: 0.2.0
         version: 0.2.0
@@ -30,12 +30,18 @@ importers:
 
 packages:
 
-  '@framefind/core@0.2.0':
-    resolution: {integrity: sha512-XVvS/x11Ar/3Pt3UjaeCtGx610gD1vNRIYPOCfXDbvVYya/NhCHyWQQR2yfOG9B+UmlGcRPvQcsecQBAKEzpBQ==}
+  '@framefind/core@0.2.3':
+    resolution: {integrity: sha512-HXzw5Xy99FiaiWCF+BogZXzvZi/voBFmJyhwL5Y7clNTEddxtzk48Zax0rHA7ie0CphDzMV3YqTXO6jyA/ELtw==}
     peerDependencies:
+      '@tensorflow-models/face-landmarks-detection': '>=1.0.0'
+      '@tensorflow/tfjs-node': '>=4.0.0'
       onnxruntime-node: '>=1.25.1'
       onnxruntime-web: '>=1.25.1'
     peerDependenciesMeta:
+      '@tensorflow-models/face-landmarks-detection':
+        optional: true
+      '@tensorflow/tfjs-node':
+        optional: true
       onnxruntime-node:
         optional: true
       onnxruntime-web:
@@ -43,6 +49,9 @@ packages:
 
   '@framefind/utils@0.2.0':
     resolution: {integrity: sha512-PGsIJtti2aUfgsythrTWqMIQ/OzxZE8UEEOLBhJE+vVGBSSvQhV7MwmcQrfxpqpc+82TbZhSAisUvTXYUBBgag==}
+
+  '@mediapipe/tasks-vision@0.10.35':
+    resolution: {integrity: sha512-HOvadwVRE6JC+45nyYhmnywnr5h/J8KZvOeUNVOG9q/0875pZgItznFB9bRTvLc264YSJqiZ1NsIpCStJw/egg==}
 
   '@protobufjs/aspromise@1.1.2':
     resolution: {integrity: sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ==}
@@ -122,13 +131,16 @@ packages:
 
 snapshots:
 
-  '@framefind/core@0.2.0(onnxruntime-web@1.25.1)':
+  '@framefind/core@0.2.3(onnxruntime-web@1.25.1)':
     dependencies:
       '@framefind/utils': 0.2.0
+      '@mediapipe/tasks-vision': 0.10.35
     optionalDependencies:
       onnxruntime-web: 1.25.1
 
   '@framefind/utils@0.2.0': {}
+
+  '@mediapipe/tasks-vision@0.10.35': {}
 
   '@protobufjs/aspromise@1.1.2': {}
 

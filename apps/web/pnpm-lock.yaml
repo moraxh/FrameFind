@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@framefind/react':
-        specifier: ^0.2.0
-        version: 0.2.0(onnxruntime-web@1.25.1)(react@19.2.4)
+        specifier: ^0.2.3
+        version: 0.2.3(onnxruntime-web@1.25.1)(react@19.2.4)
       '@mediapipe/tasks-vision':
         specifier: ^0.10.35
         version: 0.10.35
@@ -136,19 +136,25 @@ packages:
   '@emnapi/runtime@1.10.0':
     resolution: {integrity: sha512-ewvYlk86xUoGI0zQRNq/mC+16R1QeDlKQy21Ki3oSYXNgLb45GV1P6A0M+/s6nyCuNDqe5VpaY84BzXGwVbwFA==}
 
-  '@framefind/core@0.2.0':
-    resolution: {integrity: sha512-XVvS/x11Ar/3Pt3UjaeCtGx610gD1vNRIYPOCfXDbvVYya/NhCHyWQQR2yfOG9B+UmlGcRPvQcsecQBAKEzpBQ==}
+  '@framefind/core@0.2.3':
+    resolution: {integrity: sha512-HXzw5Xy99FiaiWCF+BogZXzvZi/voBFmJyhwL5Y7clNTEddxtzk48Zax0rHA7ie0CphDzMV3YqTXO6jyA/ELtw==}
     peerDependencies:
+      '@tensorflow-models/face-landmarks-detection': '>=1.0.0'
+      '@tensorflow/tfjs-node': '>=4.0.0'
       onnxruntime-node: '>=1.25.1'
       onnxruntime-web: '>=1.25.1'
     peerDependenciesMeta:
+      '@tensorflow-models/face-landmarks-detection':
+        optional: true
+      '@tensorflow/tfjs-node':
+        optional: true
       onnxruntime-node:
         optional: true
       onnxruntime-web:
         optional: true
 
-  '@framefind/react@0.2.0':
-    resolution: {integrity: sha512-ylKt0ZczHAW3m7BzXO33cdmfCrJRx/HhEbtQHQx7UTNEmtUo2oxfNi8ZPuMZ7Js6k1QDchitihUISOrrCsuV9Q==}
+  '@framefind/react@0.2.3':
+    resolution: {integrity: sha512-9xsRFTE7Nl/EciiIvPHJHfyRUFgANjMZYvt6YFxtY4752keDFyY2jFD2xOYDI6WZIIztroyljqi+imeEsMnN4Q==}
     peerDependencies:
       onnxruntime-web: '>=1.25.1'
       react: '>=18.0.0'
@@ -852,19 +858,22 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@framefind/core@0.2.0(onnxruntime-web@1.25.1)':
+  '@framefind/core@0.2.3(onnxruntime-web@1.25.1)':
     dependencies:
       '@framefind/utils': 0.2.0
+      '@mediapipe/tasks-vision': 0.10.35
     optionalDependencies:
       onnxruntime-web: 1.25.1
 
-  '@framefind/react@0.2.0(onnxruntime-web@1.25.1)(react@19.2.4)':
+  '@framefind/react@0.2.3(onnxruntime-web@1.25.1)(react@19.2.4)':
     dependencies:
-      '@framefind/core': 0.2.0(onnxruntime-web@1.25.1)
+      '@framefind/core': 0.2.3(onnxruntime-web@1.25.1)
       '@framefind/utils': 0.2.0
       onnxruntime-web: 1.25.1
       react: 19.2.4
     transitivePeerDependencies:
+      - '@tensorflow-models/face-landmarks-detection'
+      - '@tensorflow/tfjs-node'
       - onnxruntime-node
 
   '@framefind/utils@0.2.0': {}

@@ -26,7 +26,7 @@ type Landmark = { x: number; y: number; z: number };
 const DEFAULT_FACE_LANDMARKER_MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const DEFAULT_MEDIAPIPE_WASM =
-  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm";
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
 
 export class GlassesDetector {
   private session: InferenceSession | null = null;
@@ -39,6 +39,7 @@ export class GlassesDetector {
   private autoLandmarks: boolean;
   private faceLandmarkerModelUrl: string;
   private mediapipeWasmPath: string;
+  private lastVideoTime = -1;
 
   constructor(opts: GlassesDetectorOptions) {
     this.modelUrl = opts.modelUrl ?? "https://cdn.framefind.moraxh.dev/glasses/v1/glasses.onnx";
@@ -66,6 +67,8 @@ export class GlassesDetector {
           baseOptions: { modelAssetPath: this.faceLandmarkerModelUrl, delegate: "GPU" },
           runningMode: "VIDEO",
           numFaces: 1,
+          minFaceDetectionConfidence: 0.3,
+          minFacePresenceConfidence: 0.3,
         });
       } catch {
         // @mediapipe/tasks-vision not installed — autoLandmarks disabled, falls back to center-crop
@@ -155,10 +158,16 @@ export class GlassesDetector {
     const vw = video.videoWidth;
     const vh = video.videoHeight;
 
-    const lm = landmarks ?? this.detectLandmarksFromVideo(video);
+    let lm = landmarks;
+    let faceDetected = false;
+
+    // only run landmark detection on new frames
+    if (!landmarks && video.currentTime !== this.lastVideoTime) {
+      this.lastVideoTime = video.currentTime;
+      lm = this.detectLandmarksFromVideo(video);
+    }
 
     let roi: { x: number; y: number; w: number; h: number } | null = null;
-    let faceDetected = false;
 
     if (lm && lm.length > 0) {
       faceDetected = true;
@@ -177,11 +186,24 @@ export class GlassesDetector {
     }
 
     const pixels = ctx.getImageData(0, 0, ROI_SIZE, ROI_SIZE).data;
-    return this.detectFromImageData(pixels, ROI_SIZE, ROI_SIZE, lm);
+
+    if (!faceDetected) {
+      // no face — don't pollute prob history, return last smoothed value
+      const smoothed = smoothAverage(this.probHistory);
+      return {
+        glasses: smoothed >= this.threshold,
+        probability: smoothed,
+        faceDetected: false,
+      };
+    }
+
+    const result = await this.detectFromImageData(pixels, ROI_SIZE, ROI_SIZE);
+    return { ...result, faceDetected };
   }
 
   resetHistory(): void {
     this.probHistory = [];
+    this.lastVideoTime = -1;
   }
 
   dispose(): void {
@@ -190,6 +212,7 @@ export class GlassesDetector {
     this.faceLandmarker?.close();
     this.faceLandmarker = null;
     this.probHistory = [];
+    this.lastVideoTime = -1;
   }
 }
 
