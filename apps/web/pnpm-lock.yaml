@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@framefind/react':
-        specifier: ^0.2.4
-        version: 0.2.4(onnxruntime-web@1.25.1)(react@19.2.4)
+        specifier: ^0.2.6
+        version: 0.2.6(onnxruntime-web@1.25.1)(react@19.2.4)
       '@mediapipe/tasks-vision':
         specifier: ^0.10.35
         version: 0.10.35
@@ -156,8 +156,8 @@ packages:
       onnxruntime-web:
         optional: true
 
-  '@framefind/react@0.2.4':
-    resolution: {integrity: sha512-1QdTBmLgTM67rleYaOFMLtB2dU/eKpBJBo3jH9dQgnyuuGZ6dQG0+bzTYIWB0ZTDaumYod2HKZl2WU8ry4IsxA==}
+  '@framefind/react@0.2.6':
+    resolution: {integrity: sha512-u9uZ7GYkj32kXMxQqv6eGYRmZO42aw18tyVNRphsE37/GwIf8ryP5vXz6S93H69mEKp8eagbbon7/fEuxd2Xaw==}
     peerDependencies:
       onnxruntime-web: '>=1.25.1'
       react: '>=18.0.0'
@@ -897,7 +897,7 @@ snapshots:
     optionalDependencies:
       onnxruntime-web: 1.25.1
 
-  '@framefind/react@0.2.4(onnxruntime-web@1.25.1)(react@19.2.4)':
+  '@framefind/react@0.2.6(onnxruntime-web@1.25.1)(react@19.2.4)':
     dependencies:
       '@framefind/core': 0.2.4(onnxruntime-web@1.25.1)
       '@framefind/utils': 0.2.0

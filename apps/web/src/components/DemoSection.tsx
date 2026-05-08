@@ -25,10 +25,6 @@ export function DemoSection() {
   const [displayResult, setDisplayResult] = useState<DetectionResult | null>(null);
 
   useEffect(() => {
-    console.log("Model loading:", modelLoading);
-  }, [modelLoading]);
-
-  useEffect(() => {
     if (!result) return;
     if (result.faceDetected) {
       noFaceFramesRef.current = 0;
