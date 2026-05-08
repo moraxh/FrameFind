@@ -19,7 +19,6 @@ export function DemoSection() {
   const animationFrameRef = useRef<number | null>(null);
 
   const { detect, loading: modelLoading } = useGlassesDetector({
-    modelUrl: "/models/glasses-detector.onnx",
     enabled: true,
   });
 

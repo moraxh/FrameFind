@@ -5,7 +5,8 @@
     "moduleResolution": "NodeNext",
     "lib": ["ES2020", "DOM"],
     "outDir": "./dist/browser",
-    "rootDir": "./src/browser"
+    "rootDir": "./src/browser",
+    "types": ["node"]
   },
   "include": ["src/browser"]
 }

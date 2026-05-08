@@ -24,8 +24,8 @@ export class GlassesDetector {
   private probHistory: number[] = [];
   private threshold: number;
   private smoothN: number;
-  private modelUrl: string;
-  private wasmPaths: string;
+  private modelUrl?: string;
+  private wasmPaths?: string;
 
   constructor(opts: GlassesDetectorOptions) {
     this.modelUrl = opts.modelUrl ?? "https://cdn.framefind.moraxh.dev/glasses/v1/glasses.onnx";
