@@ -311,12 +311,6 @@ export function DemoSection() {
                   </li>
                 </ul>
               </div>
-
-              <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-4">
-                <p className="text-sm text-cyan-200">
-                  💡 Install package to enable real detection with your own ONNX model.
-                </p>
-              </div>
             </div>
           </div>
         </FadeIn>
