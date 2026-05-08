@@ -19,6 +19,10 @@ export type GlassesDetectorOptions = {
   autoLandmarks?: boolean;
   faceLandmarkerModelUrl?: string;
   mediapipeWasmPath?: string;
+  minFaceDetectionConfidence?: number;
+  minFacePresenceConfidence?: number;
+  inferenceIntervalMs?: number;
+  preferGpu?: boolean;
 };
 
 type Landmark = { x: number; y: number; z: number };
@@ -27,6 +31,7 @@ const DEFAULT_FACE_LANDMARKER_MODEL =
   "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const DEFAULT_MEDIAPIPE_WASM =
   "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
+const DEFAULT_CONFIDENCE = 0.5;
 
 export class GlassesDetector {
   private session: InferenceSession | null = null;
@@ -39,7 +44,13 @@ export class GlassesDetector {
   private autoLandmarks: boolean;
   private faceLandmarkerModelUrl: string;
   private mediapipeWasmPath: string;
+  private minFaceDetectionConfidence: number;
+  private minFacePresenceConfidence: number;
+  private inferenceIntervalMs: number;
+  private preferGpu: boolean;
   private lastVideoTime = -1;
+  private lastInferenceTs = -Infinity;
+  private lastResult: DetectionResult = { glasses: false, probability: 0, faceDetected: false };
 
   constructor(opts: GlassesDetectorOptions) {
     this.modelUrl = opts.modelUrl ?? "https://cdn.framefind.moraxh.dev/glasses/v1/glasses.onnx";
@@ -49,6 +60,14 @@ export class GlassesDetector {
     this.autoLandmarks = opts.autoLandmarks ?? true;
     this.faceLandmarkerModelUrl = opts.faceLandmarkerModelUrl ?? DEFAULT_FACE_LANDMARKER_MODEL;
     this.mediapipeWasmPath = opts.mediapipeWasmPath ?? DEFAULT_MEDIAPIPE_WASM;
+    this.minFaceDetectionConfidence = opts.minFaceDetectionConfidence ?? DEFAULT_CONFIDENCE;
+    this.minFacePresenceConfidence = opts.minFacePresenceConfidence ?? DEFAULT_CONFIDENCE;
+    this.inferenceIntervalMs = opts.inferenceIntervalMs ?? 0;
+    this.preferGpu = opts.preferGpu ?? true;
+  }
+
+  setInferenceInterval(ms: number): void {
+    this.inferenceIntervalMs = Math.max(0, ms);
   }
 
   async load(): Promise<void> {
@@ -61,14 +80,29 @@ export class GlassesDetector {
 
     if (this.autoLandmarks) {
       try {
-        const vision = await import("@mediapipe/tasks-vision");
-        const fileset = await vision.FilesetResolver.forVisionTasks(this.mediapipeWasmPath);
-        this.faceLandmarker = await vision.FaceLandmarker.createFromOptions(fileset, {
-          baseOptions: { modelAssetPath: this.faceLandmarkerModelUrl, delegate: "GPU" },
-          runningMode: "VIDEO",
-          numFaces: 1,
-          minFaceDetectionConfidence: 0.3,
-          minFacePresenceConfidence: 0.3,
+        this.faceLandmarker = await silenceMediapipeInfo(async () => {
+          const vision = await import("@mediapipe/tasks-vision");
+          const fileset = await vision.FilesetResolver.forVisionTasks(this.mediapipeWasmPath);
+          const baseConfig = {
+            runningMode: "VIDEO" as const,
+            numFaces: 1,
+            minFaceDetectionConfidence: this.minFaceDetectionConfidence,
+            minFacePresenceConfidence: this.minFacePresenceConfidence,
+          };
+          if (this.preferGpu) {
+            try {
+              return await vision.FaceLandmarker.createFromOptions(fileset, {
+                ...baseConfig,
+                baseOptions: { modelAssetPath: this.faceLandmarkerModelUrl, delegate: "GPU" },
+              });
+            } catch (e) {
+              console.warn("[GlassesDetector] GPU delegate failed, falling back to CPU.", e);
+            }
+          }
+          return vision.FaceLandmarker.createFromOptions(fileset, {
+            ...baseConfig,
+            baseOptions: { modelAssetPath: this.faceLandmarkerModelUrl, delegate: "CPU" },
+          });
         });
       } catch {
         // @mediapipe/tasks-vision not installed — autoLandmarks disabled, falls back to center-crop
@@ -155,6 +189,12 @@ export class GlassesDetector {
     offscreenCanvas: HTMLCanvasElement,
     landmarks?: Landmark[],
   ): Promise<DetectionResult> {
+    const now = performance.now();
+    if (now - this.lastInferenceTs < this.inferenceIntervalMs) {
+      return this.lastResult;
+    }
+    this.lastInferenceTs = now;
+
     const ctx = offscreenCanvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) throw new Error("Cannot get 2d context");
     const vw = video.videoWidth;
@@ -192,20 +232,24 @@ export class GlassesDetector {
     if (!faceDetected) {
       // no face — don't pollute prob history, return last smoothed value
       const smoothed = smoothAverage(this.probHistory);
-      return {
+      this.lastResult = {
         glasses: smoothed >= this.threshold,
         probability: smoothed,
         faceDetected: false,
       };
+      return this.lastResult;
     }
 
     const result = await this.detectFromImageData(pixels, ROI_SIZE, ROI_SIZE);
-    return { ...result, faceDetected };
+    this.lastResult = { ...result, faceDetected };
+    return this.lastResult;
   }
 
   resetHistory(): void {
     this.probHistory = [];
     this.lastVideoTime = -1;
+    this.lastInferenceTs = -Infinity;
+    this.lastResult = { glasses: false, probability: 0, faceDetected: false };
   }
 
   dispose(): void {
@@ -215,6 +259,8 @@ export class GlassesDetector {
     this.faceLandmarker = null;
     this.probHistory = [];
     this.lastVideoTime = -1;
+    this.lastInferenceTs = -Infinity;
+    this.lastResult = { glasses: false, probability: 0, faceDetected: false };
   }
 }
 
@@ -280,4 +326,21 @@ function centerCropPreprocess(
   ctx.drawImage(tmpCanvas, sx, sy, sq, sq, 0, 0, ROI_SIZE, ROI_SIZE);
   const cropped = ctx.getImageData(0, 0, ROI_SIZE, ROI_SIZE).data;
   return imageDataToChwFloat32(cropped, ROI_SIZE, ROI_SIZE);
+}
+
+async function silenceMediapipeInfo<T>(fn: () => Promise<T>): Promise<T> {
+  const filter = (orig: (...a: unknown[]) => void) => (...args: unknown[]) => {
+    if (typeof args[0] === "string" && args[0].includes("Created TensorFlow Lite XNNPACK delegate")) return;
+    orig(...args);
+  };
+  const origInfo = console.info;
+  const origLog = console.log;
+  console.info = filter(origInfo).bind(console);
+  console.log = filter(origLog).bind(console);
+  try {
+    return await fn();
+  } finally {
+    console.info = origInfo;
+    console.log = origLog;
+  }
 }

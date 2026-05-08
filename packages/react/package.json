@@ -1,39 +1,39 @@
 {
-  "name": "@framefind/react",
-  "version": "0.2.6",
-  "description": "React hooks for FrameFind glasses detection",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/moraxh/FrameFind"
-  },
-  "dependencies": {
-    "@framefind/core": "0.2.4",
-    "@framefind/utils": "0.2.0"
-  },
-  "peerDependencies": {
-    "onnxruntime-web": ">=1.25.1",
-    "react": ">=18.0.0"
-  },
-  "devDependencies": {
-    "@types/react": "^18.0.0",
-    "typescript": "^5.5.0"
-  }
+	"name": "@framefind/react",
+	"version": "0.2.7",
+	"description": "React hooks for FrameFind glasses detection",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"files": [
+		"dist",
+		"src"
+	],
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"typecheck": "tsc --noEmit"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/moraxh/FrameFind"
+	},
+	"dependencies": {
+		"@framefind/core": "0.2.5",
+		"@framefind/utils": "0.2.1"
+	},
+	"peerDependencies": {
+		"onnxruntime-web": ">=1.25.1",
+		"react": ">=18.0.0"
+	},
+	"devDependencies": {
+		"@types/react": "^18.0.0",
+		"typescript": "^5.5.0"
+	}
 }

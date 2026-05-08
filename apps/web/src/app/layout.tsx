@@ -15,15 +15,33 @@ const jetbrainsMono = JetBrains_Mono({
 
 const siteUrl = "https://framefind.vercel.app";
 
+const title = "FrameFind — On-device Computer Vision SDK for the Web";
+const description =
+  "Modular, privacy-first face detectors running fully local in the browser and Node.js via ONNX. Glasses, head pose, blink, attention, gaze, emotion — zero backend, zero tracking.";
+
 export const metadata: Metadata = {
-  title: "FrameFind | Real-time On-device Glasses Detection",
-  description:
-    "Real-time computer vision library that detects whether a person is wearing glasses using facial landmarks and a lightweight ONNX model.",
+  title,
+  description,
+  applicationName: "FrameFind",
+  authors: [{ name: "Jorge Mora" }],
+  creator: "Jorge Mora",
+  keywords: [
+    "computer vision",
+    "face detection",
+    "on-device ML",
+    "ONNX",
+    "WebGPU",
+    "WASM",
+    "glasses detection",
+    "head pose",
+    "privacy-first",
+    "React SDK",
+    "browser ML",
+  ],
   metadataBase: new URL(siteUrl),
   openGraph: {
-    title: "FrameFind | Real-time On-device Glasses Detection",
-    description:
-      "Real-time computer vision library that detects whether a person is wearing glasses using facial landmarks and a lightweight ONNX model.",
+    title,
+    description,
     url: siteUrl,
     siteName: "FrameFind",
     images: [
@@ -31,18 +49,43 @@ export const metadata: Metadata = {
         url: "/og_image.png",
         width: 1200,
         height: 630,
-        alt: "FrameFind SDK",
+        alt: "FrameFind — On-device Computer Vision SDK",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "FrameFind | Real-time On-device Glasses Detection",
-    description:
-      "Real-time computer vision library that detects whether a person is wearing glasses using facial landmarks and a lightweight ONNX model.",
+    title,
+    description,
     images: ["/og_image.png"],
   },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      name: "FrameFind",
+      url: siteUrl,
+      logo: `${siteUrl}/og_image.png`,
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "FrameFind SDK",
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Any",
+      description:
+        "Modular, privacy-first face detectors running fully local in the browser and Node.js via ONNX.",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      url: siteUrl,
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -52,6 +95,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} dark`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body
         className="font-sans bg-[#0a0a0a] text-neutral-300 antialiased selection:bg-cyan-500/30 selection:text-cyan-200"
         suppressHydrationWarning

@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { FadeIn } from "./FadeIn";
 import { CodeBlock } from "./CodeBlock";
+import { TabSwitcher } from "./ui/TabSwitcher";
 
-type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
+import { type PackageManager, PACKAGE_MANAGERS, getInstallCommand as _getInstallCommand } from "@/lib/types";
+
 type Tab = "react" | "browser" | "node";
-
-const PACKAGE_MANAGERS: PackageManager[] = ["npm", "pnpm", "yarn", "bun"];
 
 const TAB_CODE: Record<Tab, { language: string; code: string }> = {
   react: {
@@ -106,16 +106,7 @@ async function analyzeImage(imagePath: string) {
 };
 
 function getInstallCommand(pm: PackageManager, packages: string): string {
-  switch (pm) {
-    case "pnpm":
-      return `pnpm add ${packages}`;
-    case "yarn":
-      return `yarn add ${packages}`;
-    case "bun":
-      return `bun add ${packages}`;
-    default:
-      return `npm install ${packages}`;
-  }
+  return _getInstallCommand(pm, packages);
 }
 
 export function QuickStartSection() {
@@ -146,65 +137,103 @@ export function QuickStartSection() {
               Quick start
             </h2>
             <p className="text-sm text-neutral-400 mb-8 leading-relaxed">
-              FrameFind is modular. Install the core SDK for raw JS environments,
-              or the React bindings for hook-based state management.
+              Three steps from install to first detection result.
             </p>
-            <div className="space-y-4">
-              <div className="flex items-center gap-1.5 mb-6 bg-neutral-900/50 p-1 w-fit rounded-lg border border-neutral-800">
-                {PACKAGE_MANAGERS.map((pm) => (
-                  <button
-                    key={pm}
-                    onClick={() => handleManagerChange(pm)}
-                    className={`px-3 py-1.5 text-xs font-mono rounded-md transition-colors ${
-                      packageManager === pm
-                        ? "bg-neutral-800 text-white shadow-sm"
-                        : "bg-transparent text-neutral-500 hover:text-neutral-300"
-                    }`}
-                  >
-                    {pm}
-                  </button>
-                ))}
+
+            {/* Step 1 */}
+            <div className="flex gap-4 mb-8">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5" aria-label="Step 1">
+                1
               </div>
-              <div>
-                <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">
-                  Core Engine
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white mb-3">Install packages</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-1.5 mb-4 bg-neutral-900/50 p-1 w-fit rounded-lg border border-neutral-800">
+                    {PACKAGE_MANAGERS.map((pm) => (
+                      <button
+                        key={pm}
+                        type="button"
+                        onClick={() => handleManagerChange(pm)}
+                        aria-pressed={packageManager === pm}
+                        className={`px-3 py-1.5 text-xs font-mono rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-cyan-400 ${
+                          packageManager === pm
+                            ? "bg-neutral-800 text-white shadow-sm"
+                            : "bg-transparent text-neutral-500 hover:text-neutral-300"
+                        }`}
+                      >
+                        {pm}
+                      </button>
+                    ))}
+                  </div>
+                  <div>
+                    <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">Core Engine</div>
+                    <CodeBlock code={cmd("@framefind/core onnxruntime-web")} language="bash" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">React Support</div>
+                    <CodeBlock code={cmd("@framefind/react")} language="bash" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">Node.js</div>
+                    <CodeBlock code={cmd("onnxruntime-node")} language="bash" />
+                  </div>
                 </div>
-                <CodeBlock code={cmd("@framefind/core onnxruntime-web")} language="bash" />
-              </div>
-              <div>
-                <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">
-                  React Support
-                </div>
-                <CodeBlock code={cmd("@framefind/react")} language="bash" />
-              </div>
-              <div>
-                <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">
-                  Node.js Server
-                </div>
-                <CodeBlock code={cmd("onnxruntime-node")} language="bash" />
               </div>
             </div>
+
+            {/* Step 2 */}
+            <div className="flex gap-4 mb-8">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5" aria-label="Step 2">
+                2
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white mb-3">Initialize a detector</p>
+                <CodeBlock
+                  language="tsx"
+                  code={`const { detect, result, loading } = useGlassesDetector({ enabled: true });`}
+                />
+                <p className="text-xs text-neutral-500 mt-2">Or use the vanilla API: <code className="text-cyan-500">new GlassesDetector()</code></p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="flex gap-4">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5" aria-label="Step 3">
+                3
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white mb-3">Read results in your render loop</p>
+                <CodeBlock
+                  language="tsx"
+                  code={`if (result?.glasses) {
+  console.log(\`Glasses! \${(result.probability * 100).toFixed(1)}% confidence\`);
+}`}
+                />
+              </div>
+            </div>
+
           </div>
         </FadeIn>
 
         <FadeIn delay={0.1}>
           <div className="bg-[#111111] border border-neutral-800 rounded-xl overflow-hidden h-full flex flex-col">
-            <div className="flex border-b border-neutral-800">
-              {(["react", "browser", "node"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-6 py-3 text-sm font-medium transition-colors ${
-                    activeTab === tab
-                      ? "border-b border-cyan-400 text-white bg-white/5"
-                      : "text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.02]"
-                  }`}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </div>
-            <div className="relative bg-[#0d0d0d] min-h-[22rem] overflow-hidden">
+            <TabSwitcher
+              tabs={(["react", "browser", "node"] as const).map((t) => ({
+                id: t,
+                label: t.charAt(0).toUpperCase() + t.slice(1),
+              }))}
+              value={activeTab}
+              onChange={setActiveTab}
+              variant="underline"
+              ariaLabel="Code example environment"
+              panelIdPrefix="qs-code"
+            />
+            <div
+              id={`qs-code-${activeTab}`}
+              role="tabpanel"
+              aria-labelledby={`tab-btn-qs-code-${activeTab}`}
+              className="relative bg-[#0d0d0d] min-h-[22rem] overflow-hidden"
+            >
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}

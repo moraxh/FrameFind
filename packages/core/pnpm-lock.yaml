@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@framefind/utils':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: 0.2.1
+        version: 0.2.1
       '@mediapipe/tasks-vision':
         specifier: ^0.10.0
         version: 0.10.35
@@ -36,8 +36,8 @@ importers:
 
 packages:
 
-  '@framefind/utils@0.2.0':
-    resolution: {integrity: sha512-PGsIJtti2aUfgsythrTWqMIQ/OzxZE8UEEOLBhJE+vVGBSSvQhV7MwmcQrfxpqpc+82TbZhSAisUvTXYUBBgag==}
+  '@framefind/utils@0.2.1':
+    resolution: {integrity: sha512-+mgVypSEWUEqMQCAvh9qMGG9vBeneED47lOmSRoVq+3D7YhoQEse/fVquUmfUuBoNh7CVQq28GZupXoNlP0Izw==}
 
   '@mapbox/node-pre-gyp@1.0.9':
     resolution: {integrity: sha512-aDF3S3rK9Q2gey/WAttUlISduDItz5BU3306M9Eyv6/oS40aMprnopshtlKTykxRNIBEZuRMaZAnbrQ4QtKGyw==}
@@ -647,7 +647,7 @@ packages:
 
 snapshots:
 
-  '@framefind/utils@0.2.0': {}
+  '@framefind/utils@0.2.1': {}
 
   '@mapbox/node-pre-gyp@1.0.9':
     dependencies:

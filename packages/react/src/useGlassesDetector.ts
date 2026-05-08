@@ -8,6 +8,10 @@ export type UseGlassesDetectorOptions = {
   threshold?: number;
   smoothingWindow?: number;
   enabled?: boolean;
+  inferenceIntervalMs?: number;
+  minFaceDetectionConfidence?: number;
+  minFacePresenceConfidence?: number;
+  preferGpu?: boolean;
 };
 
 export type UseGlassesDetectorResult = {
@@ -40,6 +44,10 @@ export function useGlassesDetector(opts: UseGlassesDetectorOptions): UseGlassesD
       wasmPaths: opts.wasmPaths,
       threshold: opts.threshold,
       smoothingWindow: opts.smoothingWindow,
+      inferenceIntervalMs: opts.inferenceIntervalMs,
+      minFaceDetectionConfidence: opts.minFaceDetectionConfidence,
+      minFacePresenceConfidence: opts.minFacePresenceConfidence,
+      preferGpu: opts.preferGpu,
     });
     detectorRef.current = detector;
     setLoading(true);
@@ -57,7 +65,17 @@ export function useGlassesDetector(opts: UseGlassesDetectorOptions): UseGlassesD
       detector.dispose();
       detectorRef.current = null;
     };
-  }, [opts.modelUrl, opts.wasmPaths, opts.threshold, opts.smoothingWindow, enabled]);
+  }, [
+    opts.modelUrl,
+    opts.wasmPaths,
+    opts.threshold,
+    opts.smoothingWindow,
+    opts.inferenceIntervalMs,
+    opts.minFaceDetectionConfidence,
+    opts.minFacePresenceConfidence,
+    opts.preferGpu,
+    enabled,
+  ]);
 
   const detect = useCallback(
     async (

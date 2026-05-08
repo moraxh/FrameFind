@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FrameFind — MediaPipe Matrix Head Pose</title>
+
+    <style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  background:#111;
+  color:#eee;
+  font-family:system-ui,sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  gap:24px;
+  padding:24px;
+}
+
+h1{
+  font-size:20px;
+  font-weight:600;
+}
+
+#status{
+  font-size:13px;
+  color:#888;
+}
+
+.main-row{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:flex-start;
+}
+
+.video-container{
+  position:relative;
+  width:480px;
+  max-width:100%;
+  aspect-ratio:4/3;
+  overflow:hidden;
+  border-radius:8px;
+  background:#000;
+}
+
+video{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+
+  /* selfie mirror */
+  transform:scaleX(-1);
+}
+
+#lmCanvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+
+.right-panel{
+  width:200px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+#poseCanvas{
+  width:100%;
+  aspect-ratio:1;
+  background:#000;
+  border-radius:8px;
+}
+
+.angles{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.angle-row{
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  color:#aaa;
+}
+
+.angle-row span:last-child{
+  color:#fff;
+  font-weight:600;
+  min-width:58px;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+button{
+  padding:12px 36px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+  font-size:15px;
+}
+
+button:disabled{
+  opacity:.35;
+}
+
+#btnStart.running{
+  background:#ff5555;
+  color:#fff;
+}
+</style>
+  </head>
+
+  <body>
+
+    <h1>FrameFind — Matrix Head Pose</h1>
+    <div id="status">Loading models…</div>
+
+    <div class="main-row">
+
+      <div class="video-container">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="lmCanvas"></canvas>
+      </div>
+
+      <div class="right-panel">
+
+        <canvas id="poseCanvas"></canvas>
+
+        <div class="angles">
+          <div class="angle-row">
+            <span>Yaw</span>
+            <span id="yaw-val">—</span>
+          </div>
+
+          <div class="angle-row">
+            <span>Pitch</span>
+            <span id="pitch-val">—</span>
+          </div>
+
+          <div class="angle-row">
+            <span>Roll</span>
+            <span id="roll-val">—</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <button id="btnStart" disabled>
+      Start camera
+    </button>
+
+    <script type="module">
+
+const { FaceLandmarker, FilesetResolver } =
+  await import(
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs'
+  );
+
+const video      = document.getElementById('video');
+const statusEl   = document.getElementById('status');
+const btnStart   = document.getElementById('btnStart');
+
+const lmCanvas   = document.getElementById('lmCanvas');
+const lmCtx      = lmCanvas.getContext('2d');
+
+const poseCanvas = document.getElementById('poseCanvas');
+const poseCtx    = poseCanvas.getContext('2d');
+
+const yawVal     = document.getElementById('yaw-val');
+const pitchVal   = document.getElementById('pitch-val');
+const rollVal    = document.getElementById('roll-val');
+
+let faceLandmarker = null;
+let stream = null;
+let running = false;
+let lastVideoTime = -1;
+
+// smoothing
+let smoothYaw = 0;
+let smoothPitch = 0;
+let smoothRoll = 0;
+
+const ALPHA = 0.15;
+
+/* ----------------------------------------------------- */
+/* landmark connections */
+/* ----------------------------------------------------- */
+
+const CONNECTIONS = [
+[10,338],[338,297],[297,332],[332,284],[284,251],[251,389],
+[389,356],[356,454],[454,323],[323,361],[361,288],[288,397],
+[397,365],[365,379],[379,378],[378,400],[400,377],[377,152],
+[152,148],[148,176],[176,149],[149,150],[150,136],[136,172],
+[172,58],[58,132],[132,93],[93,234],[234,127],[127,162],
+[162,21],[21,54],[54,103],[103,67],[67,109],[109,10]
+];
+
+/* ----------------------------------------------------- */
+/* draw landmarks */
+/* ----------------------------------------------------- */
+
+function drawLandmarks(landmarks, w, h){
+
+  lmCanvas.width = w;
+  lmCanvas.height = h;
+
+  lmCtx.clearRect(0,0,w,h);
+
+  lmCtx.strokeStyle='rgba(125,249,160,0.35)';
+  lmCtx.lineWidth=1;
+
+  for(const [a,b] of CONNECTIONS){
+
+    const A = landmarks[a];
+    const B = landmarks[b];
+
+    if(!A || !B) continue;
+
+    lmCtx.beginPath();
+
+    /* mirror draw */
+    lmCtx.moveTo((1-A.x)*w, A.y*h);
+    lmCtx.lineTo((1-B.x)*w, B.y*h);
+
+    lmCtx.stroke();
+  }
+}
+
+/* ----------------------------------------------------- */
+/* matrix -> euler */
+/* ----------------------------------------------------- */
+
+function matrixToEuler(matrix){
+
+  const m = matrix.data;
+
+  const r00 = m[0];
+  const r01 = m[4];
+  const r02 = m[8];
+
+  const r10 = m[1];
+  const r11 = m[5];
+  const r12 = m[9];
+
+  const r20 = m[2];
+  const r21 = m[6];
+  const r22 = m[10];
+
+  let yaw, pitch, roll;
+
+  // Yaw
+  yaw = Math.atan2(r10, r00);
+
+  // Pitch
+  pitch = Math.atan2(-r20, Math.sqrt(r21*r21 + r22*r22));
+
+  // Roll
+  roll = Math.atan2(r21, r22);
+
+  const RAD2DEG = 180 / Math.PI;
+
+  return {
+    yaw: pitch * RAD2DEG,
+    pitch: roll * RAD2DEG,
+    roll:  yaw* RAD2DEG
+  };
+}
+
+/* ----------------------------------------------------- */
+/* 3D cube */
+/* ----------------------------------------------------- */
+
+const HVERTS = [
+[-1,-1.4,-0.7],
+[ 1,-1.4,-0.7],
+[ 1, 1.4,-0.7],
+[-1, 1.4,-0.7],
+[-1,-1.4, 0.7],
+[ 1,-1.4, 0.7],
+[ 1, 1.4, 0.7],
+[-1, 1.4, 0.7],
+];
+
+const HEDGES = [
+[0,1],[1,2],[2,3],[3,0],
+[4,5],[5,6],[6,7],[7,4],
+[0,4],[1,5],[2,6],[3,7]
+];
+
+function makeRotFn(yaw,pitch,roll){
+
+  const d = Math.PI/180;
+
+  const cy=Math.cos(yaw*d);
+  const sy=Math.sin(yaw*d);
+
+  const cp=Math.cos(pitch*d);
+  const sp=Math.sin(pitch*d);
+
+  const cr=Math.cos(roll*d);
+  const sr=Math.sin(roll*d);
+
+  const Ry=[
+    [cy,0,sy],
+    [0,1,0],
+    [-sy,0,cy]
+  ];
+
+  const Rx=[
+    [1,0,0],
+    [0,cp,-sp],
+    [0,sp,cp]
+  ];
+
+  const Rz=[
+    [cr,-sr,0],
+    [sr,cr,0],
+    [0,0,1]
+  ];
+
+  function mm(A,B){
+
+    const C=[[0,0,0],[0,0,0],[0,0,0]];
+
+    for(let i=0;i<3;i++){
+      for(let j=0;j<3;j++){
+        for(let k=0;k<3;k++){
+          C[i][j]+=A[i][k]*B[k][j];
+        }
+      }
+    }
+
+    return C;
+  }
+
+  const R = mm(Ry, mm(Rx, Rz));
+
+  return v=>[
+    R[0][0]*v[0]+R[0][1]*v[1]+R[0][2]*v[2],
+    R[1][0]*v[0]+R[1][1]*v[1]+R[1][2]*v[2],
+    R[2][0]*v[0]+R[2][1]*v[1]+R[2][2]*v[2],
+  ];
+}
+
+function proj3(v,cx,cy,fov){
+
+  const z = v[2] + 5;
+
+  return [
+    cx + v[0]*fov/z,
+    cy - v[1]*fov/z
+  ];
+}
+
+function drawPoseObject(yaw,pitch,roll){
+
+  const sz = poseCanvas.width;
+
+  poseCtx.clearRect(0,0,sz,sz);
+
+  const rot = makeRotFn(yaw,-pitch,-roll);
+
+  const cx = sz/2;
+  const cy = sz/2;
+
+  const fov = sz*0.8;
+
+  const vp = HVERTS.map(v=>proj3(rot(v),cx,cy,fov));
+
+  poseCtx.strokeStyle='rgba(255,255,255,0.55)';
+  poseCtx.lineWidth=1.5;
+
+  for(const [a,b] of HEDGES){
+
+    poseCtx.beginPath();
+
+    poseCtx.moveTo(vp[a][0],vp[a][1]);
+    poseCtx.lineTo(vp[b][0],vp[b][1]);
+
+    poseCtx.stroke();
+  }
+}
+
+/* ----------------------------------------------------- */
+/* init */
+/* ----------------------------------------------------- */
+
+async function init(){
+
+  try{
+
+    statusEl.textContent='Loading model…';
+
+    const filesetResolver =
+      await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+      );
+
+    faceLandmarker =
+      await FaceLandmarker.createFromOptions(
+        filesetResolver,
+        {
+
+          baseOptions:{
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+
+            delegate:'GPU',
+          },
+
+          runningMode:'VIDEO',
+
+          numFaces:1,
+
+          outputFacialTransformationMatrixes:true,
+
+          minFaceDetectionConfidence:0.3,
+          minFacePresenceConfidence:0.3,
+        }
+      );
+
+    statusEl.textContent='Ready';
+
+    btnStart.disabled=false;
+
+    const sz = poseCanvas.parentElement.clientWidth;
+
+    poseCanvas.width = sz;
+    poseCanvas.height = sz;
+
+    drawPoseObject(0,0,0);
+
+  }catch(e){
+
+    statusEl.textContent='Load error: '+e.message;
+    console.error(e);
+  }
+}
+
+/* ----------------------------------------------------- */
+/* loop */
+/* ----------------------------------------------------- */
+
+async function loop(){
+
+  if(!running) return;
+
+  if(faceLandmarker && video.currentTime !== lastVideoTime){
+
+    lastVideoTime = video.currentTime;
+
+    const result =
+      faceLandmarker.detectForVideo(
+        video,
+        performance.now()
+      );
+
+    if(result.faceLandmarks.length){
+
+      const landmarks = result.faceLandmarks[0];
+
+      drawLandmarks(
+        landmarks,
+        video.videoWidth,
+        video.videoHeight
+      );
+
+      const matrix =
+        result.facialTransformationMatrixes?.[0];
+
+      if(matrix){
+
+        const {yaw,pitch,roll} =
+          matrixToEuler(matrix);
+
+        smoothYaw += ALPHA * (yaw - smoothYaw);
+        smoothPitch += ALPHA * (pitch - smoothPitch);
+        smoothRoll += ALPHA * (roll - smoothRoll);
+
+        yawVal.textContent =
+          smoothYaw.toFixed(1)+'°';
+
+        pitchVal.textContent =
+          smoothPitch.toFixed(1)+'°';
+
+        rollVal.textContent =
+          smoothRoll.toFixed(1)+'°';
+
+        drawPoseObject(
+          smoothYaw,
+          smoothPitch,
+          smoothRoll
+        );
+      }
+
+    }else{
+
+      lmCtx.clearRect(
+        0,0,
+        lmCanvas.width,
+        lmCanvas.height
+      );
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+
+/* ----------------------------------------------------- */
+/* button */
+/* ----------------------------------------------------- */
+
+btnStart.addEventListener('click', async ()=>{
+
+  if(stream){
+
+    running=false;
+
+    stream.getTracks().forEach(t=>t.stop());
+
+    stream=null;
+
+    video.srcObject=null;
+
+    btnStart.textContent='Start camera';
+
+    btnStart.classList.remove('running');
+
+    statusEl.textContent='Ready';
+
+    drawPoseObject(0,0,0);
+
+  }else{
+
+    try{
+
+      stream =
+        await navigator.mediaDevices.getUserMedia({
+
+          video:{
+            facingMode:'user',
+            width:640,
+            height:480
+          }
+        });
+
+      video.srcObject = stream;
+
+      await new Promise(
+        r => video.onloadedmetadata = r
+      );
+
+      running = true;
+
+      btnStart.textContent='Stop camera';
+
+      btnStart.classList.add('running');
+
+      statusEl.textContent='Running…';
+
+      loop();
+
+    }catch(e){
+
+      statusEl.textContent =
+        'Camera error: '+e.message;
+    }
+  }
+});
+
+init();
+
+</script>
+  </body>
+</html>
