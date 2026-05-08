@@ -312,7 +312,7 @@ export function HeadPoseDemo() {
           />
           <canvas
             ref={lmCanvasRef}
-            className="absolute inset-0 w-full h-full pointer-events-none [transform:scaleX(-1)]"
+            className="absolute inset-0 w-full h-full pointer-events-none"
             aria-hidden="true"
           />
           {!stream && (
@@ -321,10 +321,6 @@ export function HeadPoseDemo() {
               <p className="text-xs text-neutral-600 font-mono">Camera off</p>
             </div>
           )}
-          {/* Corner label */}
-          <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] text-neutral-600 font-mono tracking-widest uppercase">
-            Input
-          </div>
         </div>
 
         {/* Three.js */}
@@ -396,11 +392,9 @@ export function HeadPoseDemo() {
           )}
         </AnimatePresence>
 
-        {stream && result && !result.faceDetected && (
-          <p className="text-[11px] text-yellow-500/80 font-mono text-center pt-0.5">
-            No face detected
-          </p>
-        )}
+        <p className={`text-[11px] font-mono text-center pt-0.5 transition-opacity duration-200 ${stream && result && !result.faceDetected ? "text-yellow-500/80 opacity-100" : "opacity-0 select-none"}`}>
+          No face detected
+        </p>
       </div>
 
       {/* Controls */}

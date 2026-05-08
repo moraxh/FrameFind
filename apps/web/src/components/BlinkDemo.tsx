@@ -179,11 +179,6 @@ export function BlinkDemo() {
           )}
         </AnimatePresence>
 
-        {/* Status corner */}
-        <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] text-neutral-600 font-mono tracking-widest uppercase">
-          Input
-        </div>
-
         {/* No face warning */}
         {stream && result && !result.faceDetected && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500/20 border border-yellow-500/40 backdrop-blur-sm px-3 py-1 rounded-full">
