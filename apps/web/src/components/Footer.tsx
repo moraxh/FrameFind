@@ -20,6 +20,20 @@ export function Footer() {
           </a>
         </div>
       </div>
+      <div className="max-w-6xl mx-auto mt-6 pt-6 border-t border-neutral-800/40 flex justify-center">
+        <p className="text-xs text-neutral-600">
+          Built by{" "}
+          <a
+            href="https://github.com/moraxh"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-neutral-500 hover:text-neutral-300 transition-colors"
+          >
+            Jorge Mora
+          </a>
+          {" "}— blame him if it breaks
+        </p>
+      </div>
     </footer>
   );
 }
