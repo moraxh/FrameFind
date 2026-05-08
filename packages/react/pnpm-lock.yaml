@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@framefind/core':
-        specifier: 0.1.5
-        version: 0.1.5(onnxruntime-web@1.25.1)
+        specifier: 0.2.0
+        version: 0.2.0(onnxruntime-web@1.25.1)
       '@framefind/utils':
-        specifier: 0.1.3
-        version: 0.1.3
+        specifier: 0.2.0
+        version: 0.2.0
       onnxruntime-web:
         specifier: '>=1.25.1'
         version: 1.25.1
@@ -30,8 +30,8 @@ importers:
 
 packages:
 
-  '@framefind/core@0.1.5':
-    resolution: {integrity: sha512-8JbfljwAASwjAwp+ijGc6wyv9A9DS9DdlRb6PEivljPmfr7AuvR6o/peBboQ3JPEEF7tjIumrUgAoeVYN8yTBQ==}
+  '@framefind/core@0.2.0':
+    resolution: {integrity: sha512-XVvS/x11Ar/3Pt3UjaeCtGx610gD1vNRIYPOCfXDbvVYya/NhCHyWQQR2yfOG9B+UmlGcRPvQcsecQBAKEzpBQ==}
     peerDependencies:
       onnxruntime-node: '>=1.25.1'
       onnxruntime-web: '>=1.25.1'
@@ -41,8 +41,8 @@ packages:
       onnxruntime-web:
         optional: true
 
-  '@framefind/utils@0.1.3':
-    resolution: {integrity: sha512-QjaUenTwAtVRRauXdOjqsFAta7dO01PVu71U729TYXGAPNtizpVmpAjmzQjRtBv7wdH1NwgI8HYKtZI/CF6+JA==}
+  '@framefind/utils@0.2.0':
+    resolution: {integrity: sha512-PGsIJtti2aUfgsythrTWqMIQ/OzxZE8UEEOLBhJE+vVGBSSvQhV7MwmcQrfxpqpc+82TbZhSAisUvTXYUBBgag==}
 
   '@protobufjs/aspromise@1.1.2':
     resolution: {integrity: sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ==}
@@ -122,13 +122,13 @@ packages:
 
 snapshots:
 
-  '@framefind/core@0.1.5(onnxruntime-web@1.25.1)':
+  '@framefind/core@0.2.0(onnxruntime-web@1.25.1)':
     dependencies:
-      '@framefind/utils': 0.1.3
+      '@framefind/utils': 0.2.0
     optionalDependencies:
       onnxruntime-web: 1.25.1
 
-  '@framefind/utils@0.1.3': {}
+  '@framefind/utils@0.2.0': {}
 
   '@protobufjs/aspromise@1.1.2': {}
 

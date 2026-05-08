@@ -1,6 +1,6 @@
 {
   "name": "@framefind/utils",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Shared types and constants for FrameFind packages",
   "type": "module",
   "main": "./dist/index.js",

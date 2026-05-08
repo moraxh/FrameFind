@@ -1,4 +1,5 @@
 import type { InferenceSession } from "onnxruntime-web";
+import type { FaceLandmarker } from "@mediapipe/tasks-vision";
 import {
   type DetectionResult,
   DEFAULT_THRESHOLD,
@@ -15,23 +16,38 @@ export type GlassesDetectorOptions = {
   wasmPaths?: string;
   threshold?: number;
   smoothingWindow?: number;
+  autoLandmarks?: boolean;
+  faceLandmarkerModelUrl?: string;
+  mediapipeWasmPath?: string;
 };
 
 type Landmark = { x: number; y: number; z: number };
 
+const DEFAULT_FACE_LANDMARKER_MODEL =
+  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const DEFAULT_MEDIAPIPE_WASM =
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm";
+
 export class GlassesDetector {
   private session: InferenceSession | null = null;
+  private faceLandmarker: FaceLandmarker | null = null;
   private probHistory: number[] = [];
   private threshold: number;
   private smoothN: number;
-  private modelUrl?: string;
-  private wasmPaths?: string;
+  private modelUrl: string;
+  private wasmPaths: string;
+  private autoLandmarks: boolean;
+  private faceLandmarkerModelUrl: string;
+  private mediapipeWasmPath: string;
 
   constructor(opts: GlassesDetectorOptions) {
     this.modelUrl = opts.modelUrl ?? "https://cdn.framefind.moraxh.dev/glasses/v1/glasses.onnx";
     this.threshold = opts.threshold ?? DEFAULT_THRESHOLD;
     this.smoothN = opts.smoothingWindow ?? DEFAULT_SMOOTH_N;
     this.wasmPaths = opts.wasmPaths ?? "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.25.1/dist/";
+    this.autoLandmarks = opts.autoLandmarks ?? true;
+    this.faceLandmarkerModelUrl = opts.faceLandmarkerModelUrl ?? DEFAULT_FACE_LANDMARKER_MODEL;
+    this.mediapipeWasmPath = opts.mediapipeWasmPath ?? DEFAULT_MEDIAPIPE_WASM;
   }
 
   async load(): Promise<void> {
@@ -41,6 +57,43 @@ export class GlassesDetector {
     this.session = await ort.InferenceSession.create(this.modelUrl, {
       executionProviders: ["wasm"],
     });
+
+    if (this.autoLandmarks) {
+      try {
+        const vision = await import("@mediapipe/tasks-vision");
+        const fileset = await vision.FilesetResolver.forVisionTasks(this.mediapipeWasmPath);
+        this.faceLandmarker = await vision.FaceLandmarker.createFromOptions(fileset, {
+          baseOptions: { modelAssetPath: this.faceLandmarkerModelUrl, delegate: "GPU" },
+          runningMode: "VIDEO",
+          numFaces: 1,
+        });
+      } catch {
+        // @mediapipe/tasks-vision not installed — autoLandmarks disabled, falls back to center-crop
+      }
+    }
+  }
+
+  private detectLandmarksFromVideo(video: HTMLVideoElement): Landmark[] | undefined {
+    if (!this.faceLandmarker) return undefined;
+    if (video.readyState < 2 || video.videoWidth === 0) return undefined;
+    const res = this.faceLandmarker.detectForVideo(video, performance.now());
+    return res.faceLandmarks?.[0];
+  }
+
+  private detectLandmarksFromImage(
+    source: HTMLCanvasElement | HTMLImageElement | ImageBitmap,
+  ): Landmark[] | undefined {
+    if (!this.faceLandmarker) return undefined;
+    const lm = this.faceLandmarker as unknown as {
+      setOptions: (o: { runningMode: "IMAGE" | "VIDEO" }) => Promise<void>;
+      detect: (s: HTMLCanvasElement | HTMLImageElement | ImageBitmap) => { faceLandmarks?: Landmark[][] };
+    };
+    try {
+      const res = lm.detect(source);
+      return res.faceLandmarks?.[0];
+    } catch {
+      return undefined;
+    }
   }
 
   async detectFromImageData(
@@ -87,8 +140,9 @@ export class GlassesDetector {
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) throw new Error("Cannot get 2d context");
     const { width, height } = canvas;
+    const lm = landmarks ?? this.detectLandmarksFromImage(canvas);
     const pixels = ctx.getImageData(0, 0, width, height).data;
-    return this.detectFromImageData(pixels, width, height, landmarks);
+    return this.detectFromImageData(pixels, width, height, lm);
   }
 
   async detectFromVideoFrame(
@@ -101,12 +155,14 @@ export class GlassesDetector {
     const vw = video.videoWidth;
     const vh = video.videoHeight;
 
+    const lm = landmarks ?? this.detectLandmarksFromVideo(video);
+
     let roi: { x: number; y: number; w: number; h: number } | null = null;
     let faceDetected = false;
 
-    if (landmarks && landmarks.length > 0) {
+    if (lm && lm.length > 0) {
       faceDetected = true;
-      roi = extractEyeROI(landmarks, vw, vh);
+      roi = extractEyeROI(lm, vw, vh);
     }
 
     offscreenCanvas.width = offscreenCanvas.height = ROI_SIZE;
@@ -121,7 +177,7 @@ export class GlassesDetector {
     }
 
     const pixels = ctx.getImageData(0, 0, ROI_SIZE, ROI_SIZE).data;
-    return this.detectFromImageData(pixels, ROI_SIZE, ROI_SIZE, faceDetected ? [] : undefined);
+    return this.detectFromImageData(pixels, ROI_SIZE, ROI_SIZE, lm);
   }
 
   resetHistory(): void {
@@ -131,6 +187,8 @@ export class GlassesDetector {
   dispose(): void {
     this.session?.release();
     this.session = null;
+    this.faceLandmarker?.close();
+    this.faceLandmarker = null;
     this.probHistory = [];
   }
 }

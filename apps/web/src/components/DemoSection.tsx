@@ -14,13 +14,16 @@ export function DemoSection() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [result, setResult] = useState<DetectionResult | null>(null);
   const detectingRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
 
-  const { detect, loading: modelLoading } = useGlassesDetector({
+  const { detect, result, loading: modelLoading } = useGlassesDetector({
     enabled: true,
   });
+
+  useEffect(() => {
+    console.log(result)
+  }, [result]);
 
   useEffect(() => {
     setMounted(true);
@@ -61,7 +64,6 @@ export function DemoSection() {
       });
       setStream(mediaStream);
       setImage(null);
-      setResult(null);
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -86,7 +88,6 @@ export function DemoSection() {
     const file = e.target.files?.[0];
     if (file) {
       stopCamera();
-      setResult(null);
       const reader = new FileReader();
       reader.onload = async (event) => {
         setImage(event.target?.result as string);
@@ -140,7 +141,6 @@ export function DemoSection() {
                       onClick={() => {
                         setActiveMode(mode);
                         if (mode === "upload") stopCamera();
-                        setResult(null);
                       }}
                       className={`flex-1 px-6 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                         activeMode === mode
@@ -163,48 +163,58 @@ export function DemoSection() {
                   ))}
                 </div>
 
-                <div className="bg-black aspect-square sm:aspect-video flex items-center justify-center overflow-hidden relative">
+                <div className="bg-neutral-950 aspect-square sm:aspect-video flex items-center justify-center overflow-hidden relative rounded-t-xl">
                   {activeMode === "camera" ? (
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover bg-black"
-                    />
+                    <>
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className={`w-full h-full object-cover bg-transparent ${!stream ? "hidden" : ""}`}
+                      />
+                      {!stream && (
+                        <div className="text-center p-6">
+                          <Camera className="w-12 h-12 text-neutral-600 mx-auto mb-3" />
+                          <p className="text-neutral-400 font-medium">Camera is off</p>
+                          <p className="text-sm text-neutral-500 mt-1">Click start to test the detection</p>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <>
                       {image ? (
                         <img src={image} alt="Uploaded" className="w-full h-full object-contain" />
                       ) : (
-                        <div className="text-center">
-                          <Upload className="w-10 h-10 text-neutral-600 mx-auto" />
+                        <div className="text-center p-6">
+                          <Upload className="w-12 h-12 text-neutral-600 mx-auto mb-3" />
+                          <p className="text-neutral-400 font-medium">No image selected</p>
+                          <p className="text-sm text-neutral-500 mt-1">Upload a photo to test</p>
                         </div>
                       )}
                     </>
                   )}
                   <canvas ref={canvasRef} style={{ display: "none" }} />
-                </div>
 
-                {/* Result Overlay */}
-                {result && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
-                    <div className="text-center text-white space-y-3">
-                      <div className="text-5xl">{result.glasses ? "👓" : "😊"}</div>
-                      <div>
-                        <p className="text-lg font-semibold">
-                          {result.glasses ? "Glasses Detected" : "No Glasses"}
+                  {/* Result Overlay */}
+                  {result && (stream || image) && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md border border-white/10 px-6 py-3 flex items-center gap-4 rounded-2xl shadow-xl transition-all duration-300">
+                      <div className="text-3xl">
+                        {!result.faceDetected ? "🫣" : result.glasses ? "👓" : "😊"}
+                      </div>
+                      <div className="text-left">
+                        <p className={`text-sm font-bold ${!result.faceDetected ? "text-yellow-400" : result.glasses ? "text-cyan-400" : "text-white"}`}>
+                          {!result.faceDetected ? "No Face Detected" : result.glasses ? "Glasses Detected" : "No Glasses"}
                         </p>
-                        <p className="text-sm text-neutral-300">
-                          {(result.probability * 100).toFixed(1)}% confidence
-                        </p>
-                        <p className="text-xs text-neutral-400 mt-2">
-                          {result.latency}ms latency
-                        </p>
+                        {result.faceDetected && (
+                          <p className="text-xs text-neutral-400">
+                            {(result.probability * 100).toFixed(1)}% confidence
+                          </p>
+                        )}
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <div className="p-4 bg-neutral-900/50 border-t border-neutral-800 flex gap-2">
                   {activeMode === "camera" ? (
