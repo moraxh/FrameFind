@@ -83,16 +83,18 @@ export class GlassesDetector {
     return res.faceLandmarks?.[0];
   }
 
-  private detectLandmarksFromImage(
+  private async detectLandmarksFromImageAsync(
     source: HTMLCanvasElement | HTMLImageElement | ImageBitmap,
-  ): Landmark[] | undefined {
+  ): Promise<Landmark[] | undefined> {
     if (!this.faceLandmarker) return undefined;
     const lm = this.faceLandmarker as unknown as {
       setOptions: (o: { runningMode: "IMAGE" | "VIDEO" }) => Promise<void>;
       detect: (s: HTMLCanvasElement | HTMLImageElement | ImageBitmap) => { faceLandmarks?: Landmark[][] };
     };
     try {
+      await lm.setOptions({ runningMode: "IMAGE" });
       const res = lm.detect(source);
+      await lm.setOptions({ runningMode: "VIDEO" });
       return res.faceLandmarks?.[0];
     } catch {
       return undefined;
@@ -143,7 +145,7 @@ export class GlassesDetector {
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) throw new Error("Cannot get 2d context");
     const { width, height } = canvas;
-    const lm = landmarks ?? this.detectLandmarksFromImage(canvas);
+    const lm = landmarks ?? await this.detectLandmarksFromImageAsync(canvas);
     const pixels = ctx.getImageData(0, 0, width, height).data;
     return this.detectFromImageData(pixels, width, height, lm);
   }

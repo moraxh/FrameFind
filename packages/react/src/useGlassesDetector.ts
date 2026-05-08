@@ -12,6 +12,7 @@ export type UseGlassesDetectorOptions = {
 
 export type UseGlassesDetectorResult = {
   result: DetectionResult | null;
+  inferenceTime: number | null;
   loading: boolean;
   error: Error | null;
   detect: (
@@ -19,6 +20,7 @@ export type UseGlassesDetectorResult = {
     offscreen: HTMLCanvasElement,
     landmarks?: Array<{ x: number; y: number; z: number }>,
   ) => Promise<void>;
+  detectImage: (canvas: HTMLCanvasElement) => Promise<void>;
   reset: () => void;
 };
 
@@ -27,6 +29,7 @@ export function useGlassesDetector(opts: UseGlassesDetectorOptions): UseGlassesD
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [result, setResult] = useState<DetectionResult | null>(null);
+  const [inferenceTime, setInferenceTime] = useState<number | null>(null);
   const enabled = opts.enabled ?? true;
 
   useEffect(() => {
@@ -64,7 +67,9 @@ export function useGlassesDetector(opts: UseGlassesDetectorOptions): UseGlassesD
     ) => {
       if (!detectorRef.current) return;
       try {
+        const t0 = performance.now();
         const r = await detectorRef.current.detectFromVideoFrame(video, offscreen, landmarks);
+        setInferenceTime(performance.now() - t0);
         setResult(r);
       } catch (e) {
         setError(e instanceof Error ? e : new Error(String(e)));
@@ -73,10 +78,23 @@ export function useGlassesDetector(opts: UseGlassesDetectorOptions): UseGlassesD
     [],
   );
 
+  const detectImage = useCallback(async (canvas: HTMLCanvasElement) => {
+    if (!detectorRef.current) return;
+    try {
+      const t0 = performance.now();
+      const r = await detectorRef.current.detectFromCanvas(canvas);
+      setInferenceTime(performance.now() - t0);
+      setResult(r);
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+    }
+  }, []);
+
   const reset = useCallback(() => {
     detectorRef.current?.resetHistory();
     setResult(null);
+    setInferenceTime(null);
   }, []);
 
-  return { result, loading, error, detect, reset };
+  return { result, inferenceTime, loading, error, detect, detectImage, reset };
 }

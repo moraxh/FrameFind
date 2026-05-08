@@ -19,7 +19,7 @@ export function DemoSection() {
   const noFaceFramesRef = useRef(0);
   const NO_FACE_GRACE = 6;
 
-  const { detect, result, loading: modelLoading } = useGlassesDetector({
+  const { detect, detectImage, result, inferenceTime, loading: modelLoading } = useGlassesDetector({
     enabled: true,
   });
   const [displayResult, setDisplayResult] = useState<DetectionResult | null>(null);
@@ -108,22 +108,20 @@ export function DemoSection() {
       stopCamera();
       const reader = new FileReader();
       reader.onload = async (event) => {
-        setImage(event.target?.result as string);
-        // Auto-detect en imagen después de cargar
-        if (fileInputRef.current?.files?.[0]) {
-          const canvas = canvasRef.current;
-          if (canvas) {
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-              const img = new Image();
-              img.onload = async () => {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-                await detect(videoRef.current!, canvas);
-              };
-              img.src = event.target?.result as string;
-            }
+        const dataUrl = event.target?.result as string;
+        setImage(dataUrl);
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            const img = new Image();
+            img.onload = async () => {
+              canvas.width = img.width;
+              canvas.height = img.height;
+              ctx.drawImage(img, 0, 0);
+              await detectImage(canvas);
+            };
+            img.src = dataUrl;
           }
         }
       };
@@ -235,6 +233,11 @@ export function DemoSection() {
                         {displayResult.faceDetected && (
                           <p className="text-xs text-neutral-400">
                             {(displayResult.probability * 100).toFixed(1)}% confidence
+                          </p>
+                        )}
+                        {inferenceTime !== null && (
+                          <p className="text-xs text-neutral-500">
+                            {inferenceTime.toFixed(1)}ms
                           </p>
                         )}
                       </div>

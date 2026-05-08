@@ -1,6 +1,6 @@
 {
   "name": "@framefind/core",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Glasses detection core — browser and Node.js",
   "type": "module",
   "repository": {
