@@ -17,24 +17,27 @@ type HeroTab = "react" | "browser" | "node";
 const HERO_EXAMPLES: Record<HeroTab, { language: string; code: string }> = {
   react: {
     language: "tsx",
-    code: `import {
+    code: `import { useRef } from 'react';
+import {
   useGlassesDetector,
   useHeadPoseDetector,
   useBlinkDetector,
 } from '@framefind/react';
 
 export function App() {
-  const glasses  = useGlassesDetector();
-  const headPose = useHeadPoseDetector();
-  const blink    = useBlinkDetector();
+  const videoRef = useRef(null);
+
+  const glasses  = useGlassesDetector({ videoRef });
+  const headPose = useHeadPoseDetector({ videoRef });
+  const blink    = useBlinkDetector({ videoRef });
 
   return (
     <div>
-      <video ref={glasses.videoRef} autoPlay playsInline muted />
+      <video ref={videoRef} autoPlay playsInline muted />
       {glasses.loading && <p>Loading…</p>}
       {glasses.result  && <p>Glasses: {glasses.result.glasses ? 'yes' : 'no'}</p>}
       {headPose.result && <p>Yaw: {headPose.result.yaw.toFixed(1)}°</p>}
-      {blink.result    && <p>Blink: {blink.result.blinkDetected ? 'blink!' : 'open'}</p>}
+      {blink.result    && <p>Blink: {blink.result.blinkDetected ? 'blink!' : '—'}</p>}
     </div>
   );
 }`,
@@ -52,7 +55,7 @@ await Promise.all([glasses.load(), headPose.load(), blink.load()]);
 const video  = document.querySelector('video')!;
 const canvas = document.createElement('canvas');
 
-video.addEventListener('play', async function loop() {
+async function loop() {
   const gResult = await glasses.detectFromVideoFrame(video, canvas);
   const hResult = headPose.detectFromVideo(video);
   const bResult = blink.detectFromVideo(video);
@@ -62,7 +65,9 @@ video.addEventListener('play', async function loop() {
   console.log('blinking:', bResult.blinkDetected);
 
   requestAnimationFrame(loop);
-});`,
+}
+
+video.addEventListener('play', loop, { once: true });`,
   },
   node: {
     language: "typescript",

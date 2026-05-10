@@ -20,7 +20,6 @@ const TAB_CODE: Record<Tab, { language: string; code: string }> = {
 import { useGlassesDetector, useBlinkDetector } from '@framefind/react';
 
 export default function App() {
-  // One ref, shared across both hooks
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const { result: glasses, loading } = useGlassesDetector({
@@ -34,16 +33,19 @@ export default function App() {
   });
 
   useEffect(() => {
+    let stream: MediaStream;
     navigator.mediaDevices
       .getUserMedia({ video: true })
-      .then((stream) => {
-        if (videoRef.current) videoRef.current.srcObject = stream;
+      .then((s) => {
+        stream = s;
+        if (videoRef.current) videoRef.current.srcObject = s;
       });
+    return () => stream?.getTracks().forEach((t) => t.stop());
   }, []);
 
   return (
-    <div className="p-4">
-      <video ref={videoRef} autoPlay playsInline muted />
+    <div className="max-w-sm p-4">
+      <video ref={videoRef} autoPlay playsInline muted className="w-full" />
       {loading && <p>Loading model…</p>}
       {glasses && (
         <p>Glasses: {glasses.glasses ? 'Yes' : 'No'} ({(glasses.probability * 100).toFixed(1)}%)</p>
@@ -69,12 +71,15 @@ await detector.load();
 const video = document.getElementById('camera') as HTMLVideoElement;
 const canvas = document.createElement('canvas');
 
-video.addEventListener('play', async () => {
+async function loop() {
   const result = await detector.detectFromVideoFrame(video, canvas);
   console.log('Glasses:', result.glasses);
   console.log('Probability:', result.probability);
   console.log('Face detected:', result.faceDetected);
-});`,
+  requestAnimationFrame(loop);
+}
+
+video.addEventListener('play', loop, { once: true });`,
   },
   node: {
     language: "typescript",
@@ -127,7 +132,7 @@ export function QuickStartSection() {
 
   return (
     <section className="py-24 px-6">
-      <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_1.5fr] gap-16">
+      <div className="max-w-6xl mx-auto flex flex-col gap-16">
         <FadeIn>
           <div>
             <div className="text-[11px] font-mono text-cyan-500 uppercase tracking-widest mb-3">
@@ -248,7 +253,7 @@ export function QuickStartSection() {
               id={`qs-code-${activeTab}`}
               role="tabpanel"
               aria-labelledby={`tab-btn-qs-code-${activeTab}`}
-              className="relative bg-[#0d0d0d] min-h-[22rem] overflow-hidden"
+              className="relative bg-[#0d0d0d] min-h-[22rem] overflow-x-auto"
             >
               <AnimatePresence mode="wait">
                 <motion.div
