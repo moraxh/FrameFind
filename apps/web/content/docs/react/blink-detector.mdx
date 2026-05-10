@@ -1,0 +1,112 @@
+---
+title: useBlinkDetector
+description: Detect eye blinks in a live webcam feed using MediaPipe face landmarks.
+---
+
+`useBlinkDetector` tracks eye aspect ratio (EAR) and MediaPipe blendshapes to detect blinks in real time. It calibrates a baseline EAR automatically during the first ~500ms of detection, then fires `onBlink` whenever a blink is detected.
+
+## Basic usage
+
+```tsx
+"use client";
+
+import { useBlinkDetector } from "@framefind/react";
+import { useState } from "react";
+
+export function BlinkCounter() {
+  const [count, setCount] = useState(0);
+
+  const { videoRef, result, loading } = useBlinkDetector({
+    onBlink: () => setCount((n) => n + 1),
+  });
+
+  return (
+    <div>
+      <video ref={videoRef} autoPlay playsInline muted />
+      {loading && <p>Calibrating...</p>}
+      {result && !result.calibrated && <p>Warming up...</p>}
+      <p>Blinks: {count}</p>
+    </div>
+  );
+}
+```
+
+The `onBlink` callback fires once per detected blink event, not once per frame. It receives the EAR values at the moment of detection.
+
+## The result object
+
+```ts
+type BlinkResult = {
+  blinkDetected: boolean;  // true on the frame the blink fires
+  ear: number | null;      // average EAR across both eyes
+  leftEar: number | null;  // left eye EAR
+  rightEar: number | null; // right eye EAR
+  leftBlinking: boolean;   // left eye is currently closed
+  rightBlinking: boolean;  // right eye is currently closed
+  faceDetected: boolean;   // face visible in frame
+  calibrated: boolean;     // baseline EAR has been established
+};
+```
+
+`blinkDetected` is only true for one frame — the frame where the blink was registered. Don't use it to count blinks by watching state; use `onBlink` instead.
+
+`calibrated` becomes true after about 500ms of face presence. Until then the detector won't fire blinks.
+
+## Options
+
+```ts
+useBlinkDetector({
+  // Called each time a blink is detected
+  onBlink: ({ ear, leftEar, rightEar }) => {},
+
+  // Whether to run detection at all. Default: true
+  enabled: true,
+
+  // MediaPipe model and WASM — both default to the FrameFind CDN
+  faceLandmarkerModelUrl: "https://cdn.framefind.moraxh.dev/...",
+  mediapipeWasmPath: "https://cdn.framefind.moraxh.dev/...",
+
+  // MediaPipe face landmarker settings
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+  minTrackingConfidence: 0.5,
+
+  // Prefer GPU inference. Default: true, falls back to CPU automatically
+  preferGpu: true,
+
+  // Throttle React state updates. Default: 0 (update every frame)
+  uiUpdateIntervalMs: 0,
+});
+```
+
+## Wink detection
+
+`leftBlinking` and `rightBlinking` let you distinguish a wink from a full blink:
+
+```tsx
+const { result } = useBlinkDetector();
+
+if (result?.leftBlinking && !result.rightBlinking) {
+  // left eye wink
+}
+if (result?.rightBlinking && !result.leftBlinking) {
+  // right eye wink
+}
+```
+
+## Pausing and resetting
+
+```tsx
+const { videoRef, isPaused, pause, resume, reset } = useBlinkDetector({
+  onBlink: () => {},
+});
+
+// Freeze detection without stopping the camera
+pause();
+resume();
+
+// Clear EAR history and re-calibrate from scratch
+reset();
+```
+
+Calling `reset()` discards the calibrated baseline, so the hook will spend another ~500ms re-calibrating.

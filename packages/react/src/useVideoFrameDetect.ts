@@ -1,56 +1,146 @@
 import { useEffect, useRef } from "react";
 
 type VideoElWithRVFC = HTMLVideoElement & {
-  requestVideoFrameCallback?: (cb: (now: number, metadata: unknown) => void) => number;
-  cancelVideoFrameCallback?: (handle: number) => void;
+	requestVideoFrameCallback?: (
+		cb: (now: number, metadata: VideoFrameCallbackMetadata) => void,
+	) => number;
+
+	cancelVideoFrameCallback?: (handle: number) => void;
+};
+
+export type UseVideoFrameDetectOptions = {
+	enabled?: boolean;
+
+	/**
+	 * Skip duplicated frames when using RAF fallback.
+	 * Default: true
+	 */
+	skipDuplicateFrames?: boolean;
+
+	/**
+	 * Pause processing.
+	 * Default: false
+	 */
+	paused?: boolean;
 };
 
 /**
- * Drives a per-frame callback using `requestVideoFrameCallback` when available,
- * falling back to `requestAnimationFrame`. Skips redundant frames to avoid
- * burning inference on duplicate webcam ticks.
+ * Runs a callback on every unique video frame.
+ *
+ * Uses:
+ * - requestVideoFrameCallback when available
+ * - requestAnimationFrame fallback otherwise
+ *
+ * Automatically:
+ * - skips duplicated frames
+ * - prevents overlapping async processing
+ * - handles cleanup safely
  */
 export function useVideoFrameDetect(
-  video: HTMLVideoElement | null,
-  callback: (video: HTMLVideoElement) => void,
-  enabled: boolean = true,
+	video: HTMLVideoElement | null,
+	callback: (video: HTMLVideoElement) => void | Promise<void>,
+	opts: UseVideoFrameDetectOptions = {},
 ): void {
-  const cbRef = useRef(callback);
-  cbRef.current = callback;
+	const { enabled = true, skipDuplicateFrames = true, paused = false } = opts;
 
-  useEffect(() => {
-    if (!video || !enabled) return;
-    const v = video as VideoElWithRVFC;
-    let rvfcHandle: number | null = null;
-    let rafHandle: number | null = null;
-    let cancelled = false;
+	const callbackRef = useRef(callback);
 
-    const useRvfc = typeof v.requestVideoFrameCallback === "function";
+	callbackRef.current = callback;
 
-    const tickRvfc = () => {
-      if (cancelled) return;
-      cbRef.current(video);
-      rvfcHandle = v.requestVideoFrameCallback!(tickRvfc);
-    };
+	const processingRef = useRef(false);
 
-    const tickRaf = () => {
-      if (cancelled) return;
-      cbRef.current(video);
-      rafHandle = requestAnimationFrame(tickRaf);
-    };
+	const lastVideoTimeRef = useRef<number | null>(null);
 
-    if (useRvfc) {
-      rvfcHandle = v.requestVideoFrameCallback!(tickRvfc);
-    } else {
-      rafHandle = requestAnimationFrame(tickRaf);
-    }
+	useEffect(() => {
+		if (!video) return;
 
-    return () => {
-      cancelled = true;
-      if (rvfcHandle !== null && v.cancelVideoFrameCallback) {
-        v.cancelVideoFrameCallback(rvfcHandle);
-      }
-      if (rafHandle !== null) cancelAnimationFrame(rafHandle);
-    };
-  }, [video, enabled]);
+		if (!enabled) return;
+
+		if (paused) return;
+
+		const v = video as VideoElWithRVFC;
+
+		let cancelled = false;
+
+		let rvfcHandle: number | null = null;
+
+		let rafHandle: number | null = null;
+
+		const useRvfc = typeof v.requestVideoFrameCallback === "function";
+
+		const processFrame = async () => {
+			if (cancelled) return;
+
+			if (processingRef.current) return;
+
+			if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+				return;
+			}
+
+			if (skipDuplicateFrames) {
+				const currentTime = video.currentTime;
+
+				if (lastVideoTimeRef.current === currentTime) {
+					return;
+				}
+
+				lastVideoTimeRef.current = currentTime;
+			}
+
+			processingRef.current = true;
+
+			try {
+				await callbackRef.current(video);
+			} finally {
+				processingRef.current = false;
+			}
+		};
+
+		const tickRvfc = () => {
+			if (cancelled) return;
+
+			if (!cancelled && v.requestVideoFrameCallback) {
+				rvfcHandle = v.requestVideoFrameCallback(tickRvfc);
+			}
+
+			processFrame();
+		};
+
+		const tickRaf = () => {
+			if (cancelled) return;
+
+			rafHandle = requestAnimationFrame(tickRaf);
+
+			processFrame();
+		};
+
+		const startLoop = () => {
+			if (cancelled) return;
+			if (useRvfc) {
+				rvfcHandle = v.requestVideoFrameCallback!(tickRvfc);
+			} else {
+				rafHandle = requestAnimationFrame(tickRaf);
+			}
+		};
+
+		if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA || !video.paused) {
+			startLoop();
+		} else {
+			video.addEventListener("play", startLoop, { once: true });
+		}
+
+		return () => {
+			cancelled = true;
+
+			video.removeEventListener("play", startLoop);
+
+			if (rvfcHandle !== null && v.cancelVideoFrameCallback) {
+				v.cancelVideoFrameCallback(rvfcHandle);
+			}
+
+			if (rafHandle !== null) {
+				cancelAnimationFrame(rafHandle);
+			}
+		};
+	}, [video, enabled, paused, skipDuplicateFrames]);
 }

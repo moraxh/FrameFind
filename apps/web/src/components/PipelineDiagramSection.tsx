@@ -17,12 +17,12 @@ const STEPS: PipelineStep[] = [
 
 export function PipelineDiagramSection() {
   return (
-    <section className="py-20 sm:py-24 px-6" aria-labelledby="pipeline-heading">
-      <div className="max-w-5xl mx-auto">
+    <section className="py-24 px-6" aria-labelledby="pipeline-heading">
+      <div className="max-w-6xl mx-auto">
         <FadeIn>
           <div className="text-center mb-14">
-            <p className="text-sm font-mono text-cyan-400 mb-3 tracking-wider uppercase">How it works</p>
-            <h2 id="pipeline-heading" className="text-3xl sm:text-4xl font-bold text-white">
+            <p className="text-[11px] font-mono text-cyan-500 uppercase tracking-widest mb-3">How it works</p>
+            <h2 id="pipeline-heading" className="text-3xl md:text-4xl font-semibold tracking-tight text-white">
               Frame-to-result in milliseconds
             </h2>
             <p className="mt-4 text-neutral-400 max-w-xl mx-auto">

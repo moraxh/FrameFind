@@ -1,0 +1,133 @@
+---
+title: useGlassesDetector
+description: Detect whether a person is wearing glasses in a live webcam feed.
+---
+
+`useGlassesDetector` runs an ONNX model on every video frame to classify whether the detected face is wearing glasses. It manages model loading, the frame loop, and smoothing internally.
+
+## Basic usage
+
+```tsx
+"use client";
+
+import { useGlassesDetector } from "@framefind/react";
+
+export function GlassesCamera() {
+  const { videoRef, result, loading } = useGlassesDetector();
+
+  return (
+    <div>
+      <video ref={videoRef} autoPlay playsInline muted />
+      {loading && <p>Loading model...</p>}
+      {result && (
+        <p>
+          {result.faceDetected
+            ? result.glasses
+              ? "Wearing glasses"
+              : "No glasses"
+            : "No face detected"}
+        </p>
+      )}
+    </div>
+  );
+}
+```
+
+You need to wire the camera yourself — the hook only processes frames from whatever `srcObject` is on the video element.
+
+```tsx
+async function startCamera(videoEl: HTMLVideoElement) {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  videoEl.srcObject = stream;
+  videoEl.play();
+}
+```
+
+## The result object
+
+```ts
+type DetectionResult = {
+  glasses: boolean;       // true when glasses are detected above the threshold
+  probability: number;    // raw model output, 0–1
+  faceDetected: boolean;  // false when no face is in frame
+};
+```
+
+`glasses` is derived from `probability` using the threshold option (default `0.5`). If `faceDetected` is false, `glasses` is also false.
+
+## Options
+
+```ts
+useGlassesDetector({
+  // Model location. Defaults to the FrameFind CDN.
+  modelUrl: "https://cdn.framefind.moraxh.dev/models/glasses/v1/glasses.onnx",
+
+  // ONNX Runtime WASM files location. Defaults to the FrameFind CDN.
+  wasmPaths: "https://cdn.framefind.moraxh.dev/onnxruntime-web/1.25.1/dist/",
+
+  // Minimum probability to classify as glasses. Default: 0.5
+  threshold: 0.5,
+
+  // Number of frames to average for smoothing. Default: 5
+  smoothingWindow: 5,
+
+  // Whether to run detection at all. Default: true
+  enabled: true,
+
+  // Minimum milliseconds between inferences. Default: 0 (every frame)
+  inferenceIntervalMs: 0,
+
+  // MediaPipe face landmarker settings
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+
+  // Prefer GPU inference via WebGL delegate. Default: true, falls back to CPU
+  preferGpu: true,
+
+  // Throttle React state updates. Useful to avoid re-renders on every frame.
+  // Default: 0 (update every frame)
+  uiUpdateIntervalMs: 100,
+});
+```
+
+## Detect from a static image
+
+The hook also exposes `detectImage` for running inference on a canvas snapshot rather than live video:
+
+```tsx
+const { detectImage, result } = useGlassesDetector();
+
+async function checkImage(imageEl: HTMLImageElement) {
+  const canvas = document.createElement("canvas");
+  canvas.width = imageEl.naturalWidth;
+  canvas.height = imageEl.naturalHeight;
+  canvas.getContext("2d")!.drawImage(imageEl, 0, 0);
+  await detectImage(canvas);
+  // result updates with the classification
+}
+```
+
+## Pausing and resuming
+
+```tsx
+const { videoRef, result, isPaused, pause, resume, reset } = useGlassesDetector();
+
+// Stop processing frames without stopping the camera
+pause();
+
+// Resume
+resume();
+
+// Clear history and reset the smoothing window
+reset();
+```
+
+## Reducing re-renders
+
+By default the hook updates state on every processed frame, which can be 30–60 times per second. If you only need to display the result occasionally, set `uiUpdateIntervalMs`:
+
+```tsx
+const { result } = useGlassesDetector({ uiUpdateIntervalMs: 200 });
+```
+
+Internal detection still runs at full frame rate — only the React state updates are throttled.

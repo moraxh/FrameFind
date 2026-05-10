@@ -2,18 +2,48 @@
 
 import { useHeadPoseDetector } from "@framefind/react";
 import { Camera } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const CONNECTIONS = [
-  [10, 338],[338, 297],[297, 332],[332, 284],[284, 251],[251, 389],
-  [389, 356],[356, 454],[454, 323],[323, 361],[361, 288],[288, 397],
-  [397, 365],[365, 379],[379, 378],[378, 400],[400, 377],[377, 152],
-  [152, 148],[148, 176],[176, 149],[149, 150],[150, 136],[136, 172],
-  [172, 58],[58, 132],[132, 93],[93, 234],[234, 127],[127, 162],
-  [162, 21],[21, 54],[54, 103],[103, 67],[67, 109],[109, 10],
+  [10, 338],
+  [338, 297],
+  [297, 332],
+  [332, 284],
+  [284, 251],
+  [251, 389],
+  [389, 356],
+  [356, 454],
+  [454, 323],
+  [323, 361],
+  [361, 288],
+  [288, 397],
+  [397, 365],
+  [365, 379],
+  [379, 378],
+  [378, 400],
+  [400, 377],
+  [377, 152],
+  [152, 148],
+  [148, 176],
+  [176, 149],
+  [149, 150],
+  [150, 136],
+  [136, 172],
+  [172, 58],
+  [58, 132],
+  [132, 93],
+  [93, 234],
+  [234, 127],
+  [127, 162],
+  [162, 21],
+  [21, 54],
+  [54, 103],
+  [103, 67],
+  [67, 109],
+  [109, 10],
 ];
 
 function drawLandmarks(
@@ -26,7 +56,8 @@ function drawLandmarks(
   ctx.strokeStyle = "rgba(34,211,238,0.35)";
   ctx.lineWidth = 1;
   for (const [a, b] of CONNECTIONS) {
-    const A = landmarks[a], B = landmarks[b];
+    const A = landmarks[a],
+      B = landmarks[b];
     if (!A || !B) continue;
     ctx.beginPath();
     ctx.moveTo((1 - A.x) * w, A.y * h);
@@ -56,7 +87,6 @@ function AngleGauge({
 }) {
   const pct = Math.min(Math.abs(value) / max, 1);
   const isPositive = value >= 0;
-  const absVal = Math.abs(value);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -93,7 +123,6 @@ function AngleGauge({
 // ─── HeadPoseDemo ─────────────────────────────────────────────────────────────
 
 export function HeadPoseDemo() {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const lmCanvasRef = useRef<HTMLCanvasElement>(null);
   const threeContainerRef = useRef<HTMLDivElement>(null);
   const threeRef = useRef<{
@@ -106,12 +135,20 @@ export function HeadPoseDemo() {
 
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [mounted, setMounted] = useState(false);
-  const detectingRef = useRef(false);
-  const rafRef = useRef<number | null>(null);
 
-  const { detect, result, loading: modelLoading } = useHeadPoseDetector({ enabled: true });
+  const {
+    videoRef,
+    result,
+    loading: modelLoading,
+  } = useHeadPoseDetector({
+    enabled: true,
+    inferenceIntervalMs: 0,
+    uiUpdateIntervalMs: 0,
+  });
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Init Three.js
   useEffect(() => {
@@ -125,7 +162,10 @@ export function HeadPoseDemo() {
       if (initialized) return;
       initialized = true;
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+      });
       renderer.setSize(w, h);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setClearColor(0x000000, 0);
@@ -148,7 +188,7 @@ export function HeadPoseDemo() {
 
       let head: THREE.Object3D | null = null;
       new GLTFLoader().load(
-        "/portal_companion_cube.glb",
+        "/geisha.glb",
         (gltf) => {
           head = gltf.scene;
           const box = new THREE.Box3().setFromObject(head);
@@ -165,7 +205,13 @@ export function HeadPoseDemo() {
         (err) => console.error("GLTF load failed:", err),
       );
 
-      const three = { renderer, scene, camera, head: null as THREE.Object3D | null, raf: 0 };
+      const three = {
+        renderer,
+        scene,
+        camera,
+        head: null as THREE.Object3D | null,
+        raf: 0,
+      };
       const renderLoop = () => {
         three.raf = requestAnimationFrame(renderLoop);
         renderer.render(scene, camera);
@@ -177,7 +223,10 @@ export function HeadPoseDemo() {
     const onResize = (entries: ResizeObserverEntry[]) => {
       const { width: w, height: h } = entries[0].contentRect;
       if (w === 0 || h === 0) return;
-      if (!threeRef.current) { init(w, h); return; }
+      if (!threeRef.current) {
+        init(w, h);
+        return;
+      }
       threeRef.current.renderer.setSize(w, h);
       threeRef.current.camera.aspect = w / h;
       threeRef.current.camera.updateProjectionMatrix();
@@ -188,7 +237,8 @@ export function HeadPoseDemo() {
 
     const onWindowResize = () => {
       if (!threeRef.current || !el) return;
-      const w = el.clientWidth, h = el.clientHeight;
+      const w = el.clientWidth,
+        h = el.clientHeight;
       if (!w || !h) return;
       threeRef.current.renderer.setSize(w, h);
       threeRef.current.camera.aspect = w / h;
@@ -208,7 +258,7 @@ export function HeadPoseDemo() {
         threeRef.current = null;
       }
     };
-  }, [mounted]);
+  }, []);
 
   // Apply pose
   useEffect(() => {
@@ -235,30 +285,16 @@ export function HeadPoseDemo() {
     } else {
       ctx.clearRect(0, 0, lmCanvas.width, lmCanvas.height);
     }
-  }, [result]);
-
-  const runDetectionLoop = useCallback(() => {
-    if (!stream || !videoRef.current || detectingRef.current) return;
-    const video = videoRef.current;
-    if (video.readyState >= 2) {
-      detectingRef.current = true;
-      detect(video);
-      detectingRef.current = false;
-    }
-    rafRef.current = requestAnimationFrame(runDetectionLoop);
-  }, [detect, stream]);
-
-  useEffect(() => {
-    if (stream) rafRef.current = requestAnimationFrame(runDetectionLoop);
-    return () => {
-      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-    };
-  }, [stream, runDetectionLoop]);
+  }, [result, videoRef.current]);
 
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        video: {
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
       });
       setStream(mediaStream);
       if (videoRef.current) {
@@ -271,7 +307,9 @@ export function HeadPoseDemo() {
   };
 
   const stopCamera = () => {
-    stream?.getTracks().forEach((t) => t.stop());
+    stream?.getTracks().forEach((t) => {
+      t.stop();
+    });
     setStream(null);
     if (videoRef.current) videoRef.current.srcObject = null;
     if (threeRef.current?.head) threeRef.current.head.rotation.set(0, 0, 0);
@@ -290,9 +328,15 @@ export function HeadPoseDemo() {
     <div className="bg-neutral-950 border border-neutral-800/60 rounded-2xl overflow-hidden">
       {/* Panel header */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-neutral-800/60 bg-neutral-900/30">
-        <div className={`w-2 h-2 rounded-full ${stream ? "bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.5)]" : "bg-neutral-700"} transition-all`} />
+        <div
+          className={`w-2 h-2 rounded-full ${stream ? "bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.5)]" : "bg-neutral-700"} transition-all`}
+        />
         <span className="text-xs font-mono text-neutral-500">
-          {modelLoading ? "Loading model…" : stream ? "Live · Head Pose" : "Head Pose Estimator"}
+          {modelLoading
+            ? "Loading model…"
+            : stream
+              ? "Live · Head Pose"
+              : "Head Pose Estimator"}
         </span>
         {modelLoading && (
           <div className="ml-auto w-3.5 h-3.5 border-2 border-cyan-400/60 border-t-transparent rounded-full animate-spin" />
@@ -313,7 +357,6 @@ export function HeadPoseDemo() {
           <canvas
             ref={lmCanvasRef}
             className="absolute inset-0 w-full h-full pointer-events-none"
-            aria-hidden="true"
           />
           {!stream && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
@@ -334,7 +377,8 @@ export function HeadPoseDemo() {
           <div
             className="absolute inset-0 pointer-events-none opacity-[0.04]"
             style={{
-              backgroundImage: "linear-gradient(rgba(34,211,238,1) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,1) 1px, transparent 1px)",
+              backgroundImage:
+                "linear-gradient(rgba(34,211,238,1) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,1) 1px, transparent 1px)",
               backgroundSize: "24px 24px",
             }}
           />
@@ -343,7 +387,9 @@ export function HeadPoseDemo() {
           </div>
           {!stream && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10">
-              <p className="text-xs text-neutral-700 font-mono">Waiting for input</p>
+              <p className="text-xs text-neutral-700 font-mono">
+                Waiting for input
+              </p>
             </div>
           )}
         </div>
@@ -354,7 +400,6 @@ export function HeadPoseDemo() {
         className="px-4 py-3.5 border-t border-neutral-800/60 bg-neutral-900/20 space-y-2.5"
         aria-live="polite"
         aria-atomic="true"
-        aria-label="Head pose angles"
       >
         <AnimatePresence mode="wait">
           {hasPose && result ? (
@@ -382,8 +427,12 @@ export function HeadPoseDemo() {
               {["Yaw", "Pitch", "Roll"].map((label) => (
                 <div key={label} className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-neutral-700 uppercase tracking-widest">{label}</span>
-                    <span className="text-xs font-mono text-neutral-700">—</span>
+                    <span className="text-[10px] font-mono text-neutral-700 uppercase tracking-widest">
+                      {label}
+                    </span>
+                    <span className="text-xs font-mono text-neutral-700">
+                      —
+                    </span>
                   </div>
                   <div className="h-1 bg-neutral-800/60 rounded-full" />
                 </div>
@@ -392,7 +441,9 @@ export function HeadPoseDemo() {
           )}
         </AnimatePresence>
 
-        <p className={`text-[11px] font-mono text-center pt-0.5 transition-opacity duration-200 ${stream && result && !result.faceDetected ? "text-yellow-500/80 opacity-100" : "opacity-0 select-none"}`}>
+        <p
+          className={`text-[11px] font-mono text-center pt-0.5 transition-opacity duration-200 ${stream && result && !result.faceDetected ? "text-yellow-500/80 opacity-100" : "opacity-0 select-none"}`}
+        >
           No face detected
         </p>
       </div>

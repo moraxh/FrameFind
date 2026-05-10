@@ -6,9 +6,8 @@
   --font-mono: var(--font-mono);
 }
 
-/* Global focus-visible ring — keyboard navigation */
 :focus-visible {
-  outline: 2px solid #22d3ee; /* cyan-400 */
+  outline: 2px solid #22d3ee;
   outline-offset: 2px;
   border-radius: 4px;
 }

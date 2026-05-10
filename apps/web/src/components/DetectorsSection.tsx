@@ -185,7 +185,7 @@ export function DetectorsSection() {
               <div className="text-[11px] font-mono text-cyan-500 uppercase tracking-widest mb-3">
                 Modular Detectors
               </div>
-              <h2 id="detectors-heading" className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-3">
+              <h2 id="detectors-heading" className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-3 leading-tight">
                 One platform, many signals.
               </h2>
               <p className="text-neutral-400 max-w-lg leading-relaxed">

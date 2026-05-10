@@ -1,4 +1,4 @@
-import { Zap, Lock, Box } from "lucide-react";
+import { Zap, Lock, Box, Cloud } from "lucide-react";
 import { FadeIn } from "./FadeIn";
 
 const PROBLEMS = [
@@ -14,8 +14,13 @@ const PROBLEMS = [
   },
   {
     icon: Box,
-    title: "Existing SDKs are bloated monoliths",
-    desc: "Traditional ML suites ship massive, monolithic runtimes. FrameFind is modular — each detector is a separate package. Install only what you use.",
+    title: "Heavy runtimes stay out of your bundle",
+    desc: "ONNX Runtime and MediaPipe are peer dependencies — loaded only when the detector needs them. Browser and Node builds ship as separate subpath exports, so your bundle stays minimal.",
+  },
+  {
+    icon: Cloud,
+    title: "Models served from our own CDN",
+    desc: "Weights and WASM runtimes are hosted on cdn.framefind.moraxh.dev (Cloudflare R2) — version-pinned, immutable cache, no jsdelivr/Google Storage dependency. ONNX Runtime stays a peer dep so your bundle stays lean.",
   },
 ];
 
@@ -27,14 +32,14 @@ export function ProblemSection() {
           <div className="text-[11px] font-mono text-cyan-500 uppercase tracking-widest mb-3">
             Why FrameFind
           </div>
-          <h2 className="text-2xl font-semibold tracking-tight text-white mb-12">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-12">
             The problem with existing APIs.
           </h2>
         </FadeIn>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {PROBLEMS.map((problem, i) => (
-            <FadeIn key={problem.title} delay={i * 0.08}>
-              <div className="p-6 rounded-xl border border-neutral-800/60 bg-neutral-900/20">
+            <FadeIn key={problem.title} delay={i * 0.08} className="h-full">
+              <div className="p-6 rounded-xl border border-neutral-800 bg-neutral-900/20 hover:border-neutral-700 transition-colors h-full flex flex-col">
                 <div className="w-9 h-9 rounded-lg border border-neutral-700 bg-neutral-800 flex items-center justify-center mb-5">
                   <problem.icon className="w-4 h-4 text-neutral-300" />
                 </div>

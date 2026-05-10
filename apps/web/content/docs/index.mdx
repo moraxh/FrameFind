@@ -1,0 +1,26 @@
+---
+title: Introduction
+description: Face detection utilities for the browser and Node.js.
+---
+
+FrameFind is a collection of face analysis detectors — glasses detection, blink detection, and head pose estimation — built on top of MediaPipe and ONNX Runtime. It ships in two flavors: a React package with hooks that handle the video loop and model lifecycle for you, and a core package with bare classes for when you need more control.
+
+All models load from FrameFind's CDN by default, so you can get started without hosting anything.
+
+## Packages
+
+`@framefind/react` — React hooks for real-time webcam detection. Each hook manages the model, the video frame loop, and state updates internally. You attach a `videoRef` to your `<video>` element and read results from the returned state.
+
+`@framefind/core` — Framework-agnostic detector classes. Use these in vanilla JS, in web workers, or in Node.js pipelines. You call `load()` once, then `detectFromVideo()` or `detectFromImage()` on each frame yourself.
+
+## Installation
+
+```bash
+# React (includes @framefind/core as a peer)
+npm install @framefind/react
+
+# Core only (browser or Node.js)
+npm install @framefind/core
+```
+
+The React package re-exports everything from core, so you rarely need to install both.

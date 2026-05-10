@@ -1,66 +1,66 @@
 {
-	"name": "@framefind/core",
-	"version": "0.2.5",
-	"description": "Glasses detection core — browser and Node.js",
-	"type": "module",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/moraxh/FrameFind"
-	},
-	"exports": {
-		".": {
-			"import": "./dist/browser/index.js",
-			"types": "./dist/browser/index.d.ts"
-		},
-		"./browser": {
-			"import": "./dist/browser/index.js",
-			"types": "./dist/browser/index.d.ts"
-		},
-		"./node": {
-			"import": "./dist/node/index.js",
-			"types": "./dist/node/index.d.ts"
-		}
-	},
-	"files": [
-		"dist",
-		"src"
-	],
-	"scripts": {
-		"build": "tsc -p tsconfig.browser.json && tsc -p tsconfig.node.json",
-		"dev": "tsc -p tsconfig.browser.json --watch",
-		"typecheck": "tsc -p tsconfig.browser.json --noEmit && tsc -p tsconfig.node.json --noEmit"
-	},
-	"dependencies": {
-		"@framefind/utils": "0.2.1",
-		"@mediapipe/tasks-vision": "^0.10.0"
-	},
-	"peerDependencies": {
-		"@tensorflow-models/face-landmarks-detection": ">=1.0.0",
-		"@tensorflow/tfjs-node": ">=4.0.0",
-		"onnxruntime-node": ">=1.25.1",
-		"onnxruntime-web": ">=1.25.1"
-	},
-	"peerDependenciesMeta": {
-		"@tensorflow-models/face-landmarks-detection": {
-			"optional": true
-		},
-		"@tensorflow/tfjs-node": {
-			"optional": true
-		},
-		"onnxruntime-web": {
-			"optional": true
-		},
-		"onnxruntime-node": {
-			"optional": true
-		}
-	},
-	"devDependencies": {
-		"@mediapipe/tasks-vision": "^0.10.35",
-		"@tensorflow-models/face-landmarks-detection": "^1.0.6",
-		"@tensorflow/tfjs-node": "^4.22.0",
-		"@types/node": "^20.0.0",
-		"onnxruntime-node": "^1.25.1",
-		"onnxruntime-web": "^1.25.1",
-		"typescript": "^5.5.0"
-	}
+  "name": "@framefind/core",
+  "version": "0.3.0",
+  "description": "Glasses detection core — browser and Node.js",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moraxh/FrameFind"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/browser/index.js",
+      "types": "./dist/browser/index.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser/index.js",
+      "types": "./dist/browser/index.d.ts"
+    },
+    "./node": {
+      "import": "./dist/node/index.js",
+      "types": "./dist/node/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.browser.json && tsc -p tsconfig.node.json",
+    "dev": "tsc -p tsconfig.browser.json --watch",
+    "typecheck": "tsc -p tsconfig.browser.json --noEmit && tsc -p tsconfig.node.json --noEmit"
+  },
+  "dependencies": {
+    "@framefind/utils": "0.2.1",
+    "@mediapipe/tasks-vision": "^0.10.0"
+  },
+  "peerDependencies": {
+    "@tensorflow-models/face-landmarks-detection": ">=1.0.0",
+    "@tensorflow/tfjs-node": ">=4.0.0",
+    "onnxruntime-node": ">=1.25.1",
+    "onnxruntime-web": ">=1.25.1"
+  },
+  "peerDependenciesMeta": {
+    "@tensorflow-models/face-landmarks-detection": {
+      "optional": true
+    },
+    "@tensorflow/tfjs-node": {
+      "optional": true
+    },
+    "onnxruntime-web": {
+      "optional": true
+    },
+    "onnxruntime-node": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@mediapipe/tasks-vision": "^0.10.35",
+    "@tensorflow-models/face-landmarks-detection": "^1.0.6",
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "@types/node": "^20.0.0",
+    "onnxruntime-node": "^1.25.1",
+    "onnxruntime-web": "^1.25.1",
+    "typescript": "^5.5.0"
+  }
 }

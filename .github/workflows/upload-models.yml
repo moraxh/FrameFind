@@ -44,7 +44,7 @@ jobs:
 
           echo "$FILES" | while read file; do
             [ -f "$file" ] || continue
-            key="${file#models/}"
+            key="$file"
             echo "Uploading $file → r2://framefind-models/$key"
             wrangler r2 object put "framefind-models/$key" \
               --file "$file" \

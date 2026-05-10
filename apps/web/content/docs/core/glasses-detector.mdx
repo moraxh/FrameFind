@@ -1,0 +1,98 @@
+---
+title: GlassesDetector
+description: ONNX-based glasses classifier for the browser, without React.
+---
+
+`GlassesDetector` (from `@framefind/core`) is the underlying class that `useGlassesDetector` wraps. Use it when you need to run detection outside React — in a vanilla JS app, a canvas pipeline, or a web worker.
+
+## Browser usage
+
+```ts
+import { GlassesDetector } from "@framefind/core";
+
+const detector = new GlassesDetector({});
+await detector.load();
+
+// later, on each frame:
+const result = await detector.detectFromVideoFrame(videoEl, offscreenCanvas);
+console.log(result.glasses, result.probability);
+
+// when done:
+detector.dispose();
+```
+
+`detectFromVideoFrame` copies a frame from the video element into the provided canvas before running inference. You can reuse the same canvas across calls.
+
+## Detect from a canvas directly
+
+```ts
+const result = await detector.detectFromCanvas(canvas);
+```
+
+Use this for static images — draw your image onto a canvas first, then pass it in.
+
+## Node.js
+
+Import from the node subpath:
+
+```ts
+import { GlassesDetectorNode } from "@framefind/core/node";
+
+const detector = new GlassesDetectorNode({
+  modelPath: "./models/glasses.onnx",
+});
+await detector.load();
+
+// pass a tfjs tensor or canvas-like object
+const result = await detector.detectFromImage(image);
+```
+
+`GlassesDetectorNode` uses `onnxruntime-node` instead of `onnxruntime-web`, and accepts a local file path for the model instead of a URL.
+
+## Options
+
+```ts
+new GlassesDetector({
+  // ONNX model URL. Defaults to the FrameFind CDN.
+  modelUrl: "https://cdn.framefind.moraxh.dev/models/glasses/v1/glasses.onnx",
+
+  // ONNX Runtime WASM directory. Defaults to the FrameFind CDN.
+  wasmPaths: "https://cdn.framefind.moraxh.dev/onnxruntime-web/1.25.1/dist/",
+
+  // Probability threshold for the glasses class. Default: 0.5
+  threshold: 0.5,
+
+  // Number of frames to smooth over. Default: 5
+  smoothingWindow: 5,
+
+  // MediaPipe face landmarker for auto eye-region crop
+  faceLandmarkerModelUrl: "...",
+  mediapipeWasmPath: "...",
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+
+  // Minimum ms between inferences when calling detectFromVideoFrame in a loop
+  inferenceIntervalMs: 0,
+
+  // Prefer GPU via WebGL delegate. Default: true, falls back to CPU
+  preferGpu: true,
+});
+```
+
+## Result type
+
+```ts
+type DetectionResult = {
+  glasses: boolean;
+  probability: number;
+  faceDetected: boolean;
+};
+```
+
+## Cleanup
+
+Always call `dispose()` when you're done. It releases the ONNX session and the MediaPipe face landmarker:
+
+```ts
+detector.dispose();
+```

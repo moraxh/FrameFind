@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { FadeIn } from "./FadeIn";
+import { useEffect, useState } from "react";
+import {
+  getInstallCommand as _getInstallCommand,
+  PACKAGE_MANAGERS,
+  type PackageManager,
+} from "@/lib/types";
 import { CodeBlock } from "./CodeBlock";
+import { FadeIn } from "./FadeIn";
 import { TabSwitcher } from "./ui/TabSwitcher";
-
-import { type PackageManager, PACKAGE_MANAGERS, getInstallCommand as _getInstallCommand } from "@/lib/types";
 
 type Tab = "react" | "browser" | "node";
 
@@ -17,41 +20,31 @@ const TAB_CODE: Record<Tab, { language: string; code: string }> = {
 import { useGlassesDetector } from '@framefind/react';
 
 export default function App() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const { result, loading, error, detect, reset } = useGlassesDetector({
-    modelUrl: '/models/glasses.onnx',
-    threshold: 0.35,
-    smoothingWindow: 8,
-  });
+  const { videoRef, result, loading, error, isPaused, pause, resume } =
+    useGlassesDetector({ threshold: 0.35, smoothingWindow: 8 });
 
   useEffect(() => {
-    navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
-      if (videoRef.current) videoRef.current.srcObject = stream;
-    });
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then((stream) => {
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      });
   }, []);
 
   return (
     <div className="p-4">
-      <video ref={videoRef} autoPlay playsInline muted
-        onPlay={() => {
-          setInterval(() => {
-            if (videoRef.current && canvasRef.current)
-              detect(videoRef.current, canvasRef.current);
-          }, 66);
-        }}
-      />
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      <video ref={videoRef} autoPlay playsInline muted />
       {loading && <p>Loading model…</p>}
       {error && <p>Error: {error.message}</p>}
       {result && (
         <div className="mt-4">
-          <p>Status: {result.glasses ? 'Glasses Detected' : 'No Glasses'}</p>
+          <p>Status: {result.glasses ? 'Glasses detected' : 'No glasses'}</p>
           <p>Confidence: {(result.probability * 100).toFixed(1)}%</p>
         </div>
       )}
-      <button onClick={reset}>Reset</button>
+      <button onClick={isPaused ? resume : pause}>
+        {isPaused ? 'Resume' : 'Pause'}
+      </button>
     </div>
   );
 }`,
@@ -61,9 +54,10 @@ export default function App() {
     code: `import { GlassesDetector } from '@framefind/core';
 
 const detector = new GlassesDetector({
-  modelUrl: '/models/glasses.onnx',
-  threshold: 0.35,      // default
-  smoothingWindow: 8,   // frames averaged
+  threshold: 0.35,       // default
+  smoothingWindow: 8,    // frames averaged
+  preferGpu: true,       // WebGL delegate
+  inferenceIntervalMs: 0,
 });
 
 await detector.load();
@@ -71,37 +65,34 @@ await detector.load();
 const video = document.getElementById('camera') as HTMLVideoElement;
 const canvas = document.createElement('canvas');
 
-video.addEventListener('play', () => {
-  setInterval(async () => {
-    const result = await detector.detectFromVideoFrame(video, canvas);
-    console.log('Glasses:', result.glasses);
-    console.log('Probability:', result.probability);
-  }, 66);
+video.addEventListener('play', async () => {
+  const result = await detector.detectFromVideoFrame(video, canvas);
+  console.log('Glasses:', result.glasses);
+  console.log('Probability:', result.probability);
+  console.log('Face detected:', result.faceDetected);
 });`,
   },
   node: {
     language: "typescript",
     code: `import { GlassesDetectorNode } from '@framefind/core/node';
 
-async function analyzeImage(imagePath: string) {
-  const detector = new GlassesDetectorNode({
-    modelPath: './models/glasses.onnx',
-    threshold: 0.35,
-    smoothingWindow: 8,
-  });
+const detector = new GlassesDetectorNode({
+  threshold: 0.35,
+  smoothingWindow: 8,
+});
 
-  await detector.load();
+await detector.load();
 
-  const result = await detector.detectFromImagePath(imagePath);
+// From an image file (requires 'sharp': npm i sharp)
+const result = await detector.detectFromImagePath('./photo.jpg');
 
-  await detector.dispose();
+// Or from a raw RGBA Buffer
+// const result = await detector.detectFromRgbaBuffer(rgbaBuffer);
 
-  return {
-    woreGlasses: result.glasses,
-    confidence: result.probability,
-    faceDetected: result.faceDetected,
-  };
-}`,
+console.log('Glasses:', result.glasses);
+console.log('Confidence:', result.probability);
+
+await detector.dispose();`,
   },
 };
 
@@ -126,15 +117,20 @@ export function QuickStartSection() {
   };
 
   const cmd = (packages: string) =>
-    mounted ? getInstallCommand(packageManager, packages) : `npm install ${packages}`;
+    mounted
+      ? getInstallCommand(packageManager, packages)
+      : `npm install ${packages}`;
 
   return (
     <section className="py-24 px-6">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_1.5fr] gap-16">
         <FadeIn>
           <div>
-            <h2 className="text-2xl font-medium tracking-tight text-white mb-6">
+            <div className="text-[11px] font-mono text-cyan-500 uppercase tracking-widest mb-3">
               Quick start
+            </div>
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-6">
+              Up and running in minutes.
             </h2>
             <p className="text-sm text-neutral-400 mb-8 leading-relaxed">
               Three steps from install to first detection result.
@@ -142,11 +138,13 @@ export function QuickStartSection() {
 
             {/* Step 1 */}
             <div className="flex gap-4 mb-8">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5" aria-label="Step 1">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5">
                 1
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-white mb-3">Install packages</p>
+                <p className="text-sm font-semibold text-white mb-3">
+                  Install packages
+                </p>
                 <div className="space-y-4">
                   <div className="flex items-center gap-1.5 mb-4 bg-neutral-900/50 p-1 w-fit rounded-lg border border-neutral-800">
                     {PACKAGE_MANAGERS.map((pm) => (
@@ -166,16 +164,24 @@ export function QuickStartSection() {
                     ))}
                   </div>
                   <div>
-                    <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">Core Engine</div>
-                    <CodeBlock code={cmd("@framefind/core onnxruntime-web")} language="bash" />
+                    <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">
+                      Core + React
+                    </div>
+                    <CodeBlock
+                      code={cmd(
+                        "@framefind/core @framefind/react onnxruntime-web",
+                      )}
+                      language="bash"
+                    />
                   </div>
                   <div>
-                    <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">React Support</div>
-                    <CodeBlock code={cmd("@framefind/react")} language="bash" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">Node.js</div>
-                    <CodeBlock code={cmd("onnxruntime-node")} language="bash" />
+                    <div className="text-xs font-mono text-neutral-500 mb-2 uppercase tracking-wide">
+                      Node.js
+                    </div>
+                    <CodeBlock
+                      code={cmd("@framefind/core onnxruntime-node")}
+                      language="bash"
+                    />
                   </div>
                 </div>
               </div>
@@ -183,26 +189,33 @@ export function QuickStartSection() {
 
             {/* Step 2 */}
             <div className="flex gap-4 mb-8">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5" aria-label="Step 2">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5">
                 2
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-white mb-3">Initialize a detector</p>
+                <p className="text-sm font-semibold text-white mb-3">
+                  Initialize a detector
+                </p>
                 <CodeBlock
                   language="tsx"
-                  code={`const { detect, result, loading } = useGlassesDetector({ enabled: true });`}
+                  code={`const { videoRef, result, loading } = useGlassesDetector();`}
                 />
-                <p className="text-xs text-neutral-500 mt-2">Or use the vanilla API: <code className="text-cyan-500">new GlassesDetector()</code></p>
+                <p className="text-xs text-neutral-500 mt-2">
+                  Or use the vanilla API:{" "}
+                  <code className="text-cyan-500">new GlassesDetector()</code>
+                </p>
               </div>
             </div>
 
             {/* Step 3 */}
             <div className="flex gap-4">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5" aria-label="Step 3">
+              <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5">
                 3
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-white mb-3">Read results in your render loop</p>
+                <p className="text-sm font-semibold text-white mb-3">
+                  Read results in your render loop
+                </p>
                 <CodeBlock
                   language="tsx"
                   code={`if (result?.glasses) {
@@ -211,12 +224,11 @@ export function QuickStartSection() {
                 />
               </div>
             </div>
-
           </div>
         </FadeIn>
 
         <FadeIn delay={0.1}>
-          <div className="bg-[#111111] border border-neutral-800 rounded-xl overflow-hidden h-full flex flex-col">
+          <div className="bg-[#111111] border border-neutral-800 rounded-xl overflow-hidden h-auto my-auto flex flex-col">
             <TabSwitcher
               tabs={(["react", "browser", "node"] as const).map((t) => ({
                 id: t,

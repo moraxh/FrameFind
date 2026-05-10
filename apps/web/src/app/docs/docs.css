@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@import 'fumadocs-ui/css/vitepress.css';
+@import 'fumadocs-ui/css/preset.css';
+@plugin "@tailwindcss/typography";
+
+:root,
+#nd-docs-layout {
+  --fd-layout-offset: 0px;
+}
+:root {
+  --fd-layout-width: 100vw;
+}

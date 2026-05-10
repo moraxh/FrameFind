@@ -1,11 +1,14 @@
 import {
-  type HeadPoseResult,
-  type OneEuroOptions,
-  DEFAULT_POSE_ALPHA,
-  OneEuroFilter,
-  angleDelta,
+	angleDelta,
+	DEFAULT_POSE_ALPHA,
+	type HeadPoseResult,
+	OneEuroFilter,
+	type OneEuroOptions,
 } from "@framefind/utils";
-import type { HeadPoseDetectorOptions, HeadPoseSmoothing } from "./headPoseDetector.js";
+import type {
+	HeadPoseDetectorOptions,
+	HeadPoseSmoothing,
+} from "./headPoseDetector.js";
 
 /**
  * Worker-offloaded head pose detector. Mirrors HeadPoseDetector API but runs
@@ -15,156 +18,179 @@ import type { HeadPoseDetectorOptions, HeadPoseSmoothing } from "./headPoseDetec
  * latency per frame for filter state.
  */
 export class HeadPoseDetectorWorker {
-  private worker: Worker | null = null;
-  private readyPromise: Promise<void> | null = null;
-  private busy = false;
-  private lastInferenceTs = -Infinity;
-  private inferenceIntervalMs: number;
+	private worker: Worker | null = null;
+	private readyPromise: Promise<void> | null = null;
+	private busy = false;
+	private lastInferenceTs = -Infinity;
+	private inferenceIntervalMs: number;
 
-  private opts: HeadPoseDetectorOptions;
-  private smoothingMode: "ema" | "oneEuro" | "none";
-  private alpha: number;
-  private smoothYaw = 0;
-  private smoothPitch = 0;
-  private smoothRoll = 0;
-  private hasSeenFrame = false;
-  private yawFilter: OneEuroFilter;
-  private pitchFilter: OneEuroFilter;
-  private rollFilter: OneEuroFilter;
+	private opts: HeadPoseDetectorOptions;
+	private smoothingMode: "ema" | "oneEuro" | "none";
+	private alpha: number;
+	private smoothYaw = 0;
+	private smoothPitch = 0;
+	private smoothRoll = 0;
+	private hasSeenFrame = false;
+	private yawFilter: OneEuroFilter;
+	private pitchFilter: OneEuroFilter;
+	private rollFilter: OneEuroFilter;
 
-  private lastResult: HeadPoseResult = { yaw: 0, pitch: 0, roll: 0, faceDetected: false };
+	private lastResult: HeadPoseResult = {
+		yaw: 0,
+		pitch: 0,
+		roll: 0,
+		faceDetected: false,
+	};
 
-  constructor(opts: HeadPoseDetectorOptions = {}) {
-    this.opts = opts;
-    this.alpha = opts.alpha ?? DEFAULT_POSE_ALPHA;
-    const smoothing: HeadPoseSmoothing = opts.smoothing ?? { type: "oneEuro" };
-    this.smoothingMode = smoothing.type;
-    this.inferenceIntervalMs = opts.inferenceIntervalMs ?? 0;
-    const oneEuroOpts: OneEuroOptions | undefined =
-      smoothing.type === "oneEuro" ? smoothing.options : undefined;
-    this.yawFilter = new OneEuroFilter(oneEuroOpts, true);
-    this.pitchFilter = new OneEuroFilter(oneEuroOpts, true);
-    this.rollFilter = new OneEuroFilter(oneEuroOpts, true);
-  }
+	constructor(opts: HeadPoseDetectorOptions = {}) {
+		this.opts = opts;
+		this.alpha = opts.alpha ?? DEFAULT_POSE_ALPHA;
+		const smoothing: HeadPoseSmoothing = opts.smoothing ?? { type: "oneEuro" };
+		this.smoothingMode = smoothing.type;
+		this.inferenceIntervalMs = opts.inferenceIntervalMs ?? 0;
+		const oneEuroOpts: OneEuroOptions | undefined =
+			smoothing.type === "oneEuro" ? smoothing.options : undefined;
+		this.yawFilter = new OneEuroFilter(oneEuroOpts, true);
+		this.pitchFilter = new OneEuroFilter(oneEuroOpts, true);
+		this.rollFilter = new OneEuroFilter(oneEuroOpts, true);
+	}
 
-  async load(): Promise<void> {
-    if (this.readyPromise) return this.readyPromise;
-    this.readyPromise = (async () => {
-      const blob = new Blob([WORKER_SOURCE], { type: "text/javascript" });
-      const url = URL.createObjectURL(blob);
-      this.worker = new Worker(url, { type: "module" });
-      URL.revokeObjectURL(url);
+	async load(): Promise<void> {
+		if (this.readyPromise) return this.readyPromise;
+		this.readyPromise = (async () => {
+			const blob = new Blob([WORKER_SOURCE], { type: "text/javascript" });
+			const url = URL.createObjectURL(blob);
+			this.worker = new Worker(url, { type: "module" });
+			URL.revokeObjectURL(url);
 
-      await this.rpc("init", {
-        faceLandmarkerModelUrl: this.opts.faceLandmarkerModelUrl,
-        mediapipeWasmPath: this.opts.mediapipeWasmPath,
-        minFaceDetectionConfidence: this.opts.minFaceDetectionConfidence ?? 0.5,
-        minFacePresenceConfidence: this.opts.minFacePresenceConfidence ?? 0.5,
-        minTrackingConfidence: this.opts.minTrackingConfidence ?? 0.5,
-        preferGpu: this.opts.preferGpu ?? true,
-      });
-    })();
-    return this.readyPromise;
-  }
+			await this.rpc("init", {
+				faceLandmarkerModelUrl: this.opts.faceLandmarkerModelUrl,
+				mediapipeWasmPath: this.opts.mediapipeWasmPath,
+				minFaceDetectionConfidence: this.opts.minFaceDetectionConfidence ?? 0.5,
+				minFacePresenceConfidence: this.opts.minFacePresenceConfidence ?? 0.5,
+				minTrackingConfidence: this.opts.minTrackingConfidence ?? 0.5,
+				preferGpu: this.opts.preferGpu ?? true,
+			});
+		})();
+		return this.readyPromise;
+	}
 
-  async detectFromVideo(video: HTMLVideoElement): Promise<HeadPoseResult> {
-    if (!this.worker) throw new Error("Call load() first");
-    if (video.readyState < 2 || video.videoWidth === 0) {
-      this.lastResult = { ...this.lastResult, faceDetected: false };
-      return this.lastResult;
-    }
-    const now = performance.now();
-    if (now - this.lastInferenceTs < this.inferenceIntervalMs) return this.lastResult;
-    if (this.busy) return this.lastResult;
-    this.busy = true;
-    this.lastInferenceTs = now;
+	async detectFromVideo(video: HTMLVideoElement): Promise<HeadPoseResult> {
+		if (!this.worker) throw new Error("Call load() first");
+		if (video.readyState < 2 || video.videoWidth === 0) {
+			this.lastResult = { ...this.lastResult, faceDetected: false };
+			return this.lastResult;
+		}
+		const now = performance.now();
+		if (now - this.lastInferenceTs < this.inferenceIntervalMs)
+			return this.lastResult;
+		if (this.busy) return this.lastResult;
+		this.busy = true;
+		this.lastInferenceTs = now;
 
-    try {
-      const bitmap = await createImageBitmap(video);
-      const res = await this.rpc<{
-        yaw: number; pitch: number; roll: number; faceDetected: boolean;
-      }>("detect", { bitmap, ts: now }, [bitmap]);
+		try {
+			const bitmap = await createImageBitmap(video);
+			const res = await this.rpc<{
+				yaw: number;
+				pitch: number;
+				roll: number;
+				faceDetected: boolean;
+			}>("detect", { bitmap, ts: now }, [bitmap]);
 
-      if (!res.faceDetected) {
-        this.lastResult = { ...this.lastResult, faceDetected: false };
-        return this.lastResult;
-      }
+			if (!res.faceDetected) {
+				this.lastResult = { ...this.lastResult, faceDetected: false };
+				return this.lastResult;
+			}
 
-      const tSec = now / 1000;
-      const { yaw, pitch, roll } = res;
-      let outYaw: number, outPitch: number, outRoll: number;
-      if (this.smoothingMode === "none" || !this.hasSeenFrame) {
-        this.smoothYaw = yaw;
-        this.smoothPitch = pitch;
-        this.smoothRoll = roll;
-        if (this.smoothingMode === "oneEuro") {
-          outYaw = this.yawFilter.filter(yaw, tSec);
-          outPitch = this.pitchFilter.filter(pitch, tSec);
-          outRoll = this.rollFilter.filter(roll, tSec);
-        } else {
-          outYaw = yaw;
-          outPitch = pitch;
-          outRoll = roll;
-        }
-        this.hasSeenFrame = true;
-      } else if (this.smoothingMode === "oneEuro") {
-        outYaw = this.yawFilter.filter(yaw, tSec);
-        outPitch = this.pitchFilter.filter(pitch, tSec);
-        outRoll = this.rollFilter.filter(roll, tSec);
-      } else {
-        this.smoothYaw += this.alpha * angleDelta(yaw, this.smoothYaw);
-        this.smoothPitch += this.alpha * angleDelta(pitch, this.smoothPitch);
-        this.smoothRoll += this.alpha * angleDelta(roll, this.smoothRoll);
-        outYaw = this.smoothYaw;
-        outPitch = this.smoothPitch;
-        outRoll = this.smoothRoll;
-      }
+			const tSec = now / 1000;
+			const { yaw, pitch, roll } = res;
+			let outYaw: number, outPitch: number, outRoll: number;
+			if (this.smoothingMode === "none" || !this.hasSeenFrame) {
+				this.smoothYaw = yaw;
+				this.smoothPitch = pitch;
+				this.smoothRoll = roll;
+				if (this.smoothingMode === "oneEuro") {
+					outYaw = this.yawFilter.filter(yaw, tSec);
+					outPitch = this.pitchFilter.filter(pitch, tSec);
+					outRoll = this.rollFilter.filter(roll, tSec);
+				} else {
+					outYaw = yaw;
+					outPitch = pitch;
+					outRoll = roll;
+				}
+				this.hasSeenFrame = true;
+			} else if (this.smoothingMode === "oneEuro") {
+				outYaw = this.yawFilter.filter(yaw, tSec);
+				outPitch = this.pitchFilter.filter(pitch, tSec);
+				outRoll = this.rollFilter.filter(roll, tSec);
+			} else {
+				this.smoothYaw += this.alpha * angleDelta(yaw, this.smoothYaw);
+				this.smoothPitch += this.alpha * angleDelta(pitch, this.smoothPitch);
+				this.smoothRoll += this.alpha * angleDelta(roll, this.smoothRoll);
+				outYaw = this.smoothYaw;
+				outPitch = this.smoothPitch;
+				outRoll = this.smoothRoll;
+			}
 
-      this.lastResult = { yaw: outYaw, pitch: outPitch, roll: outRoll, faceDetected: true };
-      return this.lastResult;
-    } finally {
-      this.busy = false;
-    }
-  }
+			this.lastResult = {
+				yaw: outYaw,
+				pitch: outPitch,
+				roll: outRoll,
+				faceDetected: true,
+			};
+			return this.lastResult;
+		} finally {
+			this.busy = false;
+		}
+	}
 
-  setInferenceInterval(ms: number): void {
-    this.inferenceIntervalMs = Math.max(0, ms);
-  }
+	setInferenceInterval(ms: number): void {
+		this.inferenceIntervalMs = Math.max(0, ms);
+	}
 
-  resetSmoothing(): void {
-    this.smoothYaw = 0;
-    this.smoothPitch = 0;
-    this.smoothRoll = 0;
-    this.hasSeenFrame = false;
-    this.yawFilter.reset();
-    this.pitchFilter.reset();
-    this.rollFilter.reset();
-    this.lastInferenceTs = -Infinity;
-    this.lastResult = { yaw: 0, pitch: 0, roll: 0, faceDetected: false };
-  }
+	resetSmoothing(): void {
+		this.smoothYaw = 0;
+		this.smoothPitch = 0;
+		this.smoothRoll = 0;
+		this.hasSeenFrame = false;
+		this.yawFilter.reset();
+		this.pitchFilter.reset();
+		this.rollFilter.reset();
+		this.lastInferenceTs = -Infinity;
+		this.lastResult = { yaw: 0, pitch: 0, roll: 0, faceDetected: false };
+	}
 
-  dispose(): void {
-    this.worker?.terminate();
-    this.worker = null;
-    this.readyPromise = null;
-    this.resetSmoothing();
-  }
+	dispose(): void {
+		this.worker?.terminate();
+		this.worker = null;
+		this.readyPromise = null;
+		this.resetSmoothing();
+	}
 
-  private rpc<T = unknown>(type: string, payload: unknown, transfer: Transferable[] = []): Promise<T> {
-    return new Promise((resolve, reject) => {
-      if (!this.worker) return reject(new Error("Worker disposed"));
-      const id = ++rpcId;
-      const onMsg = (e: MessageEvent) => {
-        const data = e.data as { id: number; ok: boolean; result?: T; error?: string };
-        if (data.id !== id) return;
-        this.worker!.removeEventListener("message", onMsg);
-        if (data.ok) resolve(data.result as T);
-        else reject(new Error(data.error || "worker error"));
-      };
-      this.worker.addEventListener("message", onMsg);
-      this.worker.postMessage({ id, type, payload }, transfer);
-    });
-  }
+	private rpc<T = unknown>(
+		type: string,
+		payload: unknown,
+		transfer: Transferable[] = [],
+	): Promise<T> {
+		return new Promise((resolve, reject) => {
+			if (!this.worker) return reject(new Error("Worker disposed"));
+			const id = ++rpcId;
+			const onMsg = (e: MessageEvent) => {
+				const data = e.data as {
+					id: number;
+					ok: boolean;
+					result?: T;
+					error?: string;
+				};
+				if (data.id !== id) return;
+				this.worker!.removeEventListener("message", onMsg);
+				if (data.ok) resolve(data.result as T);
+				else reject(new Error(data.error || "worker error"));
+			};
+			this.worker.addEventListener("message", onMsg);
+			this.worker.postMessage({ id, type, payload }, transfer);
+		});
+	}
 }
 
 let rpcId = 0;
@@ -174,9 +200,9 @@ let landmarker = null;
 let monotonicTs = 0;
 
 async function init(payload) {
-  const wasmPath = payload.mediapipeWasmPath ?? "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm";
-  const modelUrl = payload.faceLandmarkerModelUrl ?? "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-  const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs");
+  const wasmPath = payload.mediapipeWasmPath ?? "https://cdn.framefind.moraxh.dev/mediapipe/tasks-vision/0.10.35/wasm";
+  const modelUrl = payload.faceLandmarkerModelUrl ?? "https://cdn.framefind.moraxh.dev/mediapipe/models/face_landmarker/v1/face_landmarker.task";
+  const vision = await import("https://cdn.framefind.moraxh.dev/mediapipe/tasks-vision/0.10.35/vision_bundle.mjs");
   const fileset = await vision.FilesetResolver.forVisionTasks(wasmPath);
   const baseConfig = {
     runningMode: "VIDEO",

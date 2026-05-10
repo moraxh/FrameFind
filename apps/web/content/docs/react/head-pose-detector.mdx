@@ -1,0 +1,141 @@
+---
+title: useHeadPoseDetector
+description: Estimate yaw, pitch, and roll from a live webcam feed using MediaPipe face landmarks.
+---
+
+`useHeadPoseDetector` uses MediaPipe face landmarks to estimate head orientation in three axes: yaw (left/right), pitch (up/down), and roll (tilt). Angles are in degrees, with zero meaning the head is facing straight at the camera.
+
+## Basic usage
+
+```tsx
+"use client";
+
+import { useHeadPoseDetector } from "@framefind/react";
+
+export function HeadPoseDisplay() {
+  const { videoRef, result, loading } = useHeadPoseDetector();
+
+  return (
+    <div>
+      <video ref={videoRef} autoPlay playsInline muted />
+      {loading && <p>Loading model...</p>}
+      {result?.faceDetected && (
+        <pre>
+          yaw:   {result.yaw.toFixed(1)}°{"\n"}
+          pitch: {result.pitch.toFixed(1)}°{"\n"}
+          roll:  {result.roll.toFixed(1)}°
+        </pre>
+      )}
+    </div>
+  );
+}
+```
+
+## The result object
+
+```ts
+type HeadPoseResult = {
+  yaw: number;    // horizontal rotation, negative = left, positive = right
+  pitch: number;  // vertical rotation, negative = down, positive = up
+  roll: number;   // head tilt, negative = left shoulder, positive = right shoulder
+  faceDetected: boolean;
+  landmarks?: { x: number; y: number; z: number }[];
+};
+```
+
+`landmarks` contains the raw MediaPipe face mesh points normalized to 0–1 in video space. Useful if you want to draw an overlay on the video.
+
+## Applying pose to a 3D object
+
+A common use case is driving a 3D head model. Given angles in degrees:
+
+```tsx
+import * as THREE from "three";
+
+const { result } = useHeadPoseDetector();
+
+useEffect(() => {
+  if (!result || !mesh) return;
+  const DEG = Math.PI / 180;
+  mesh.rotation.y = -result.yaw * DEG;
+  mesh.rotation.x = result.pitch * DEG;
+  mesh.rotation.z = -result.roll * DEG;
+}, [result]);
+```
+
+The negation on yaw and roll corrects for the mirror convention — without it the model rotates opposite to the user's head.
+
+## Options
+
+```ts
+useHeadPoseDetector({
+  // Whether to run detection. Default: true
+  enabled: true,
+
+  // MediaPipe model and WASM — both default to the FrameFind CDN
+  faceLandmarkerModelUrl: "https://cdn.framefind.moraxh.dev/...",
+  mediapipeWasmPath: "https://cdn.framefind.moraxh.dev/...",
+
+  // MediaPipe confidence thresholds
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+  minTrackingConfidence: 0.5,
+
+  // Minimum ms between inferences. Default: 0 (every frame)
+  inferenceIntervalMs: 0,
+
+  // Prefer GPU inference. Default: true, falls back to CPU automatically
+  preferGpu: true,
+
+  // Run inference in a Web Worker to keep the main thread free. Default: false
+  useWorker: false,
+
+  // Throttle React state updates. Default: 0 (update every frame)
+  uiUpdateIntervalMs: 0,
+
+  // Smoothing filter for angles. See below.
+  smoothing: { type: "ema", alpha: 0.3 },
+});
+```
+
+## Smoothing
+
+Raw landmark output can be jittery. The hook supports two smoothing modes:
+
+**EMA (exponential moving average)** — fast, simple. `alpha` controls how much weight recent frames get. Lower = smoother but more lag.
+
+```ts
+smoothing: { type: "ema", alpha: 0.2 }
+```
+
+**One Euro filter** — adaptive: fast when moving, smooth when still. Better for UI interaction where you want responsiveness during quick motion.
+
+```ts
+smoothing: { type: "oneEuro", options: { minCutoff: 1, beta: 0.007 } }
+```
+
+**None** — raw angles with no filtering.
+
+```ts
+smoothing: { type: "none" }
+```
+
+## Running in a Web Worker
+
+Setting `useWorker: true` moves the MediaPipe inference off the main thread. This helps when detection is causing dropped frames in your UI:
+
+```ts
+const { videoRef, result } = useHeadPoseDetector({ useWorker: true });
+```
+
+The API is identical — the hook handles the worker lifecycle and transfers results back to the main thread automatically.
+
+## Pausing and resetting
+
+```tsx
+const { isPaused, pause, resume, reset } = useHeadPoseDetector();
+
+pause();   // stop processing new frames
+resume();  // continue
+reset();   // clear smoothed angles and re-initialize the filter state
+```

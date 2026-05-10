@@ -3,7 +3,7 @@
 import type { DetectionResult } from "@framefind/react";
 import { useGlassesDetector } from "@framefind/react";
 import { Camera, Upload } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import NextImage from "next/image";
 import { FadeIn } from "./FadeIn";
@@ -87,17 +87,14 @@ function ResultOverlay({
 
 function GlassesDemo() {
   const [activeMode, setActiveMode] = useState<"camera" | "upload">("camera");
-  const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [image, setImage] = useState<string | null>(null);
-  const detectingRef = useRef(false);
-  const animationFrameRef = useRef<number | null>(null);
   const noFaceFramesRef = useRef(0);
   const NO_FACE_GRACE = 6;
 
-  const { detect, detectImage, result, inferenceTime, loading: modelLoading } =
+  const { videoRef, detectImage, result, inferenceTime, loading: modelLoading } =
     useGlassesDetector({ enabled: true });
 
   const [displayResult, setDisplayResult] = useState<DetectionResult | null>(null);
@@ -123,32 +120,6 @@ function GlassesDemo() {
       if (noFaceFramesRef.current >= NO_FACE_GRACE) setDisplayResult(result);
     }
   }, [result]);
-
-  const runDetectionLoop = useCallback(() => {
-    if (!stream || !videoRef.current || !canvasRef.current || detectingRef.current) return;
-    detectingRef.current = true;
-    detect(videoRef.current, canvasRef.current)
-      .then(() => {
-        detectingRef.current = false;
-        animationFrameRef.current = requestAnimationFrame(runDetectionLoop);
-      })
-      .catch(() => {
-        detectingRef.current = false;
-        animationFrameRef.current = requestAnimationFrame(runDetectionLoop);
-      });
-  }, [detect, stream]);
-
-  useEffect(() => {
-    if (stream && activeMode === "camera") {
-      animationFrameRef.current = requestAnimationFrame(runDetectionLoop);
-    }
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
-  }, [stream, activeMode, runDetectionLoop]);
 
   const startCamera = async () => {
     try {

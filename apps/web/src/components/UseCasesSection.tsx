@@ -49,12 +49,12 @@ const USE_CASES: UseCase[] = [
 
 export function UseCasesSection() {
   return (
-    <section className="py-20 sm:py-28 px-6" aria-labelledby="usecases-heading">
+    <section className="py-24 px-6" aria-labelledby="usecases-heading">
       <div className="max-w-6xl mx-auto">
         <FadeIn>
           <div className="text-center mb-14">
-            <p className="text-sm font-mono text-cyan-400 mb-3 tracking-wider uppercase">Use cases</p>
-            <h2 id="usecases-heading" className="text-3xl sm:text-4xl font-bold text-white">
+            <p className="text-[11px] font-mono text-cyan-500 uppercase tracking-widest mb-3">Use cases</p>
+            <h2 id="usecases-heading" className="text-3xl md:text-4xl font-semibold tracking-tight text-white">
               Built for real applications
             </h2>
             <p className="mt-4 text-neutral-400 max-w-xl mx-auto">

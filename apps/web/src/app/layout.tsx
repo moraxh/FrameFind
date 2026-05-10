@@ -1,6 +1,6 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next"
 import "./globals.css";
 
 const inter = Inter({
@@ -94,7 +94,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} dark`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${jetbrainsMono.variable} dark`}
+    >
       <head>
         <script
           type="application/ld+json"
@@ -102,7 +105,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className="font-sans bg-[#0a0a0a] text-neutral-300 antialiased selection:bg-cyan-500/30 selection:text-cyan-200"
+        className="font-sans bg-[#0a0a0a] text-neutral-300 antialiased selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col min-h-screen"
         suppressHydrationWarning
       >
         {children}

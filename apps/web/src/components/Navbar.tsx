@@ -7,29 +7,59 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <ScanEyeIcon className="w-5 h-5 text-cyan-400" />
-          <span className="font-semibold text-neutral-100 tracking-tight">FrameFind</span>
-          <span className="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded border border-cyan-900/60 bg-cyan-950/30 text-cyan-500 uppercase tracking-wider ml-1">
-            SDK
+
+          <span className="font-semibold text-neutral-100 tracking-tight">
+            FrameFind
           </span>
         </div>
-        <nav aria-label="Primary" className="flex items-center gap-1">
-          <a href="#detectors" className="px-3 py-1.5 text-sm text-neutral-400 hover:text-neutral-100 hover:bg-white/5 rounded-md transition-colors">
-            Detectors
-          </a>
-          <a href="#roadmap" className="px-3 py-1.5 text-sm text-neutral-400 hover:text-neutral-100 hover:bg-white/5 rounded-md transition-colors">
-            Roadmap
-          </a>
-          <a href="#docs" className="px-3 py-1.5 text-sm text-neutral-400 hover:text-neutral-100 hover:bg-white/5 rounded-md transition-colors">
+
+        <nav aria-label="Primary" className="flex items-center gap-6">
+          <a href="/docs" className="hover:opacity-60 transition-opacity">
             Docs
           </a>
+
           <a
             href="https://github.com/moraxh/FrameFind"
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-2 px-3 py-1.5 text-sm text-neutral-400 hover:text-neutral-100 hover:bg-white/5 rounded-md transition-colors flex items-center gap-1.5 border border-neutral-800 hover:border-neutral-700"
+            className="
+							group
+							inline-flex
+							items-center
+							gap-2
+							rounded-lg
+							border
+							border-neutral-800
+							bg-white/[0.03]
+							px-3
+							py-1.5
+							text-sm
+							font-medium
+							text-neutral-300
+							transition-all
+							duration-200
+							hover:border-neutral-700
+							hover:bg-white/[0.06]
+							hover:text-white
+						"
           >
-            <GithubIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">GitHub</span>
+            <GithubIcon className="w-4 h-4 transition-transform group-hover:scale-110" />
+
+            <span>Star on GitHub</span>
+
+            <span
+              className="
+								rounded-md
+								bg-white/5
+								px-1.5
+								py-0.5
+								text-xs
+								text-neutral-400
+								group-hover:text-neutral-200
+							"
+            >
+              ★
+            </span>
           </a>
         </nav>
       </div>

@@ -1,0 +1,89 @@
+---
+title: BlinkDetector
+description: EAR-based blink detection for the browser, without React.
+---
+
+`BlinkDetector` gives you blink detection without any React dependency. You call `detectFromVideo` manually on each frame, typically inside a `requestVideoFrameCallback` or `requestAnimationFrame` loop.
+
+## Browser usage
+
+```ts
+import { BlinkDetector } from "@framefind/core";
+
+const detector = new BlinkDetector({});
+await detector.load();
+
+function onFrame() {
+  const result = detector.detectFromVideo(videoEl);
+  if (result.blinkDetected) {
+    console.log("blink");
+  }
+  requestAnimationFrame(onFrame);
+}
+
+requestAnimationFrame(onFrame);
+```
+
+`detectFromVideo` is synchronous and returns the same `BlinkResult` type as the React hook. It internally throttles inference to ~50fps so calling it faster than that is harmless.
+
+## Node.js
+
+```ts
+import { BlinkDetectorNode } from "@framefind/core/node";
+
+const detector = new BlinkDetectorNode({});
+await detector.load();
+
+// pass a tfjs Tensor3D or compatible image object
+const result = await detector.detectFromImage(image);
+```
+
+The Node.js variant doesn't have `detectFromVideo` (there's no browser video element). You feed it individual image frames.
+
+## Options
+
+```ts
+new BlinkDetector({
+  // MediaPipe model and WASM — both default to the FrameFind CDN
+  faceLandmarkerModelUrl: "https://cdn.framefind.moraxh.dev/...",
+  mediapipeWasmPath: "https://cdn.framefind.moraxh.dev/...",
+
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+  minTrackingConfidence: 0.5,
+
+  // Prefer GPU via WebGL delegate. Default: true, falls back to CPU
+  preferGpu: true,
+});
+```
+
+## Result type
+
+```ts
+type BlinkResult = {
+  blinkDetected: boolean;
+  ear: number | null;
+  leftEar: number | null;
+  rightEar: number | null;
+  leftBlinking: boolean;
+  rightBlinking: boolean;
+  faceDetected: boolean;
+  calibrated: boolean;
+};
+```
+
+`blinkDetected` is true only on the single frame where the blink event fires. Check `calibrated` before trusting detections — it becomes true after ~500ms of face presence.
+
+## Resetting
+
+```ts
+detector.resetHistory();
+```
+
+Clears baseline EAR, smoothing state, and blink history. The detector will re-calibrate from the next frame.
+
+## Cleanup
+
+```ts
+detector.dispose();
+```

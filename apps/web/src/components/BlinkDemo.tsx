@@ -2,7 +2,7 @@
 
 import { useBlinkDetector } from "@framefind/react";
 import { Camera, Eye } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
 // ─── EAR Bar ──────────────────────────────────────────────────────────────────
@@ -54,37 +54,19 @@ function BlinkCounter({ count }: { count: number }) {
 // ─── BlinkDemo ────────────────────────────────────────────────────────────────
 
 export function BlinkDemo() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const lmCanvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [blinkCount, setBlinkCount] = useState(0);
   const [flashKey, setFlashKey] = useState(0);
-  const rafRef = useRef<number | null>(null);
 
   const handleBlink = useCallback(() => {
     setBlinkCount((n) => n + 1);
     setFlashKey((k) => k + 1);
   }, []);
 
-  const { detect, result, loading: modelLoading } = useBlinkDetector({
+  const { videoRef, result, loading: modelLoading } = useBlinkDetector({
     enabled: true,
     onBlink: handleBlink,
   });
-
-  const runDetectionLoop = useCallback(() => {
-    if (!stream || !videoRef.current) return;
-    const video = videoRef.current;
-    if (video.readyState >= 2) detect(video);
-    rafRef.current = requestAnimationFrame(runDetectionLoop);
-  }, [detect, stream]);
-
-  useEffect(() => {
-    if (stream) rafRef.current = requestAnimationFrame(runDetectionLoop);
-    return () => {
-      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-    };
-  }, [stream, runDetectionLoop]);
-
 
   const startCamera = async () => {
     try {
@@ -138,12 +120,6 @@ export function BlinkDemo() {
           muted
           className={`w-full h-full object-cover [transform:scaleX(-1)] ${!stream ? "hidden" : ""}`}
         />
-        <canvas
-          ref={lmCanvasRef}
-          className="absolute inset-0 w-full h-full pointer-events-none [transform:scaleX(-1)]"
-          aria-hidden="true"
-        />
-
         {!stream && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
             <Eye className="w-8 h-8 text-neutral-700" />

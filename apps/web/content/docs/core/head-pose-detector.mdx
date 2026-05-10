@@ -1,0 +1,100 @@
+---
+title: HeadPoseDetector
+description: Head orientation estimation for the browser, without React.
+---
+
+`HeadPoseDetector` estimates yaw, pitch, and roll from a video element. Use it directly when you're not in React, or when you want full control over the detection loop.
+
+## Browser usage
+
+```ts
+import { HeadPoseDetector } from "@framefind/core";
+
+const detector = new HeadPoseDetector({});
+await detector.load();
+
+async function onFrame() {
+  const result = await detector.detectFromVideo(videoEl);
+  if (result.faceDetected) {
+    console.log(result.yaw, result.pitch, result.roll);
+  }
+  requestAnimationFrame(onFrame);
+}
+
+requestAnimationFrame(onFrame);
+```
+
+## Web Worker variant
+
+`HeadPoseDetectorWorker` wraps the detector in a worker so inference runs off the main thread. The API is the same:
+
+```ts
+import { HeadPoseDetectorWorker } from "@framefind/core";
+
+const detector = new HeadPoseDetectorWorker({});
+await detector.load();
+
+const result = await detector.detectFromVideo(videoEl);
+```
+
+Use this when detection is causing jank in your render loop.
+
+## Node.js
+
+```ts
+import { HeadPoseDetectorNode } from "@framefind/core/node";
+
+const detector = new HeadPoseDetectorNode({});
+await detector.load();
+
+const result = await detector.detectFromImage(image);
+```
+
+## Options
+
+```ts
+new HeadPoseDetector({
+  // MediaPipe model and WASM — both default to the FrameFind CDN
+  faceLandmarkerModelUrl: "https://cdn.framefind.moraxh.dev/...",
+  mediapipeWasmPath: "https://cdn.framefind.moraxh.dev/...",
+
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+  minTrackingConfidence: 0.5,
+
+  // Minimum ms between inferences. Default: 0 (every call)
+  inferenceIntervalMs: 0,
+
+  // Prefer GPU via WebGL delegate. Default: true, falls back to CPU
+  preferGpu: true,
+
+  // EMA alpha for smoothing. Only used when smoothing is "ema". Default: 0.3
+  alpha: 0.3,
+
+  // Smoothing mode
+  smoothing: { type: "ema" },
+  // or: { type: "oneEuro", options: { minCutoff: 1, beta: 0.007 } }
+  // or: { type: "none" }
+});
+```
+
+## Result type
+
+```ts
+type HeadPoseResult = {
+  yaw: number;
+  pitch: number;
+  roll: number;
+  faceDetected: boolean;
+  landmarks?: { x: number; y: number; z: number }[];
+};
+```
+
+Angles are in degrees. Positive yaw = facing right, positive pitch = looking up, positive roll = right-shoulder tilt.
+
+## Cleanup
+
+```ts
+detector.resetSmoothing(); // clear filter state, keep model loaded
+detector.dispose();        // release model and worker
+```
