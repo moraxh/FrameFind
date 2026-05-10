@@ -11,11 +11,6 @@
 	},
 	"dependencies": {
 		"@framefind/react": "^0.3.1",
-		"@mediapipe/tasks-vision": "^0.10.35",
-		"@radix-ui/react-collapsible": "^1.1.12",
-		"@radix-ui/react-popover": "^1.1.15",
-		"@radix-ui/react-presence": "^1.1.5",
-		"@radix-ui/react-scroll-area": "^1.2.10",
 		"@tailwindcss/typography": "^0.5.19",
 		"@types/mdx": "^2.0.13",
 		"@vercel/analytics": "^2.0.1",

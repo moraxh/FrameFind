@@ -152,6 +152,7 @@ export function HeadPoseDemo() {
 
   // Init Three.js
   useEffect(() => {
+    if (!mounted) return;
     const el = threeContainerRef.current;
     if (!el) return;
 
@@ -187,23 +188,6 @@ export function HeadPoseDemo() {
       scene.add(fill);
 
       let head: THREE.Object3D | null = null;
-      new GLTFLoader().load(
-        "/geisha.glb",
-        (gltf) => {
-          head = gltf.scene;
-          const box = new THREE.Box3().setFromObject(head);
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z) || 1;
-          const scale = 2 / maxDim;
-          head.scale.setScalar(scale);
-          head.position.sub(center.multiplyScalar(scale));
-          scene.add(head);
-          if (threeRef.current) threeRef.current.head = head;
-        },
-        undefined,
-        (err) => console.error("GLTF load failed:", err),
-      );
 
       const three = {
         renderer,
@@ -212,12 +196,40 @@ export function HeadPoseDemo() {
         head: null as THREE.Object3D | null,
         raf: 0,
       };
+      threeRef.current = three;
+
+      new GLTFLoader().load(
+        "/geisha.glb",
+        (gltf) => {
+          const inner = gltf.scene;
+          const box = new THREE.Box3().setFromObject(inner);
+          const center = new THREE.Vector3();
+          const size = new THREE.Vector3();
+          box.getCenter(center);
+          box.getSize(size);
+          const maxDim = Math.max(size.x, size.y, size.z) || 1;
+          const scale = 2 / maxDim;
+          inner.position.set(-center.x, -center.y, -center.z);
+          inner.scale.setScalar(scale);
+
+          const pivot = new THREE.Group();
+          const wrapper = new THREE.Group();
+          wrapper.add(inner);
+          pivot.add(wrapper);
+          scene.add(pivot);
+
+          head = pivot;
+          three.head = pivot;
+        },
+        undefined,
+        (err) => console.error("[HeadPose] GLTF load failed:", err),
+      );
+
       const renderLoop = () => {
         three.raf = requestAnimationFrame(renderLoop);
         renderer.render(scene, camera);
       };
       renderLoop();
-      threeRef.current = three;
     };
 
     const onResize = (entries: ResizeObserverEntry[]) => {
@@ -258,7 +270,7 @@ export function HeadPoseDemo() {
         threeRef.current = null;
       }
     };
-  }, []);
+  }, [mounted]);
 
   // Apply pose
   useEffect(() => {
