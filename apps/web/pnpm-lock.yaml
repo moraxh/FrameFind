@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@framefind/react':
-        specifier: ^0.3.1
-        version: 0.3.1(onnxruntime-web@1.26.0)(react@19.2.4)
+        specifier: ^0.3.2
+        version: 0.3.2(onnxruntime-web@1.26.0)(react@19.2.4)
       '@tailwindcss/typography':
         specifier: ^0.5.19
         version: 0.5.19(tailwindcss@4.2.4)
@@ -363,8 +363,8 @@ packages:
       onnxruntime-web:
         optional: true
 
-  '@framefind/react@0.3.1':
-    resolution: {integrity: sha512-c67Od+4NZqmuCgyFFjo9D+SVp9SLzChkyeUFf28/ltOsE7lwZkxiThDiz5/iJZqfU0Pp8Z85twZCphxGaeLypw==}
+  '@framefind/react@0.3.2':
+    resolution: {integrity: sha512-pEclpwK+ij9bbfw3R7tMn950ABErWlLQ0mWv29ypjz7HWiltT70ly4XzZoUnHxFGKNmIPGNR7U3PP1Zfed/p5Q==}
     peerDependencies:
       onnxruntime-web: '>=1.25.1'
       react: '>=18.0.0'
@@ -2520,7 +2520,7 @@ snapshots:
     optionalDependencies:
       onnxruntime-web: 1.26.0
 
-  '@framefind/react@0.3.1(onnxruntime-web@1.26.0)(react@19.2.4)':
+  '@framefind/react@0.3.2(onnxruntime-web@1.26.0)(react@19.2.4)':
     dependencies:
       '@framefind/core': 0.3.0(onnxruntime-web@1.26.0)
       '@framefind/utils': 0.2.1

@@ -13,8 +13,8 @@ import { HeadPoseDetector } from "@framefind/core";
 const detector = new HeadPoseDetector({});
 await detector.load();
 
-async function onFrame() {
-  const result = await detector.detectFromVideo(videoEl);
+function onFrame() {
+  const result = detector.detectFromVideo(videoEl);
   if (result.faceDetected) {
     console.log(result.yaw, result.pitch, result.roll);
   }
@@ -68,12 +68,13 @@ new HeadPoseDetector({
   // Prefer GPU via WebGL delegate. Default: true, falls back to CPU
   preferGpu: true,
 
-  // EMA alpha for smoothing. Only used when smoothing is "ema". Default: 0.3
-  alpha: 0.3,
+  // EMA alpha for smoothing. Only used when smoothing.type is "ema". Default: 0.15
+  alpha: 0.15,
 
-  // Smoothing mode
-  smoothing: { type: "ema" },
+  // Smoothing mode. Default: { type: "oneEuro" }
+  smoothing: { type: "oneEuro" },
   // or: { type: "oneEuro", options: { minCutoff: 1, beta: 0.007 } }
+  // or: { type: "ema" }  — uses alpha above
   // or: { type: "none" }
 });
 ```

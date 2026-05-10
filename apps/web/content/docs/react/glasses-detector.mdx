@@ -65,11 +65,11 @@ useGlassesDetector({
   // ONNX Runtime WASM files location. Defaults to the FrameFind CDN.
   wasmPaths: "https://cdn.framefind.moraxh.dev/onnxruntime-web/1.25.1/dist/",
 
-  // Minimum probability to classify as glasses. Default: 0.5
-  threshold: 0.5,
+  // Minimum probability to classify as glasses. Default: 0.35
+  threshold: 0.35,
 
-  // Number of frames to average for smoothing. Default: 5
-  smoothingWindow: 5,
+  // Number of frames to average for smoothing. Default: 8
+  smoothingWindow: 8,
 
   // Whether to run detection at all. Default: true
   enabled: true,
@@ -86,7 +86,7 @@ useGlassesDetector({
 
   // Throttle React state updates. Useful to avoid re-renders on every frame.
   // Default: 0 (update every frame)
-  uiUpdateIntervalMs: 100,
+  uiUpdateIntervalMs: 0,
 });
 ```
 
@@ -121,6 +121,26 @@ resume();
 // Clear history and reset the smoothing window
 reset();
 ```
+
+## Sharing a video element
+
+To run multiple detectors on the same `<video>` element, create one ref and pass it to each hook via the `videoRef` option:
+
+```tsx
+import { useRef } from "react";
+import { useGlassesDetector, useBlinkDetector } from "@framefind/react";
+
+export function MultiDetector() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { result: glassesResult } = useGlassesDetector({ videoRef });
+  const { result: blinkResult } = useBlinkDetector({ videoRef });
+
+  return <video ref={videoRef} autoPlay playsInline muted />;
+}
+```
+
+When `videoRef` is provided the hook does not create its own ref and does not return one — attach the shared ref directly to the element.
 
 ## Reducing re-renders
 

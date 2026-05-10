@@ -354,13 +354,13 @@ const INFO: Record<DemoTab, { title: string; desc: string; stats: { label: strin
     desc: "Real-time yaw, pitch, and roll from facial landmarks. No extra model download.",
     stats: [
       { label: "Angles", value: "3", unit: "axes" },
-      { label: "Smoothing", value: "α=0.15" },
-      { label: "Latency", value: "~0", unit: "ms" },
+      { label: "Smoothing", value: "1€ filter" },
+      { label: "Overhead", value: "<1", unit: "ms" },
     ],
     bullets: [
       { label: "Matrix-based", text: "Facial transformation matrix → ZYX Euler angles" },
-      { label: "Smooth", text: "Exponential smoothing eliminates jitter" },
-      { label: "Zero-cost", text: "Runs synchronously on every video frame" },
+      { label: "Smooth", text: "One Euro filter: fast when moving, smooth when still" },
+      { label: "Zero-cost", text: "Runs synchronously on landmarks already computed" },
     ],
   },
   blink: {

@@ -41,6 +41,12 @@ export type UseHeadPoseDetectorOptions = {
 	 * Default: 0 (no throttle, update every frame)
 	 */
 	uiUpdateIntervalMs?: number;
+
+	/**
+	 * Provide an existing ref to share a single <video> element across multiple hooks.
+	 * When omitted the hook creates its own ref.
+	 */
+	videoRef?: RefObject<HTMLVideoElement | null>;
 };
 
 export type UseHeadPoseDetectorResult = {
@@ -81,9 +87,11 @@ export function useHeadPoseDetector(
 		preferGpu,
 		useWorker = false,
 		uiUpdateIntervalMs = 0,
+		videoRef: externalVideoRef,
 	} = opts;
 
-	const videoRef = useRef<HTMLVideoElement | null>(null);
+	const internalVideoRef = useRef<HTMLVideoElement | null>(null);
+	const videoRef = externalVideoRef ?? internalVideoRef;
 
 	const detectorRef = useRef<AnyDetector | null>(null);
 

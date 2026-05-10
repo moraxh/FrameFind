@@ -17,11 +17,21 @@ const TAB_CODE: Record<Tab, { language: string; code: string }> = {
   react: {
     language: "tsx",
     code: `import { useRef, useEffect } from 'react';
-import { useGlassesDetector } from '@framefind/react';
+import { useGlassesDetector, useBlinkDetector } from '@framefind/react';
 
 export default function App() {
-  const { videoRef, result, loading, error, isPaused, pause, resume } =
-    useGlassesDetector({ threshold: 0.35, smoothingWindow: 8 });
+  // One ref, shared across both hooks
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { result: glasses, loading } = useGlassesDetector({
+    videoRef,
+    threshold: 0.35,
+  });
+
+  const { result: blink } = useBlinkDetector({
+    videoRef,
+    onBlink: () => console.log('blink!'),
+  });
 
   useEffect(() => {
     navigator.mediaDevices
@@ -35,16 +45,10 @@ export default function App() {
     <div className="p-4">
       <video ref={videoRef} autoPlay playsInline muted />
       {loading && <p>Loading model…</p>}
-      {error && <p>Error: {error.message}</p>}
-      {result && (
-        <div className="mt-4">
-          <p>Status: {result.glasses ? 'Glasses detected' : 'No glasses'}</p>
-          <p>Confidence: {(result.probability * 100).toFixed(1)}%</p>
-        </div>
+      {glasses && (
+        <p>Glasses: {glasses.glasses ? 'Yes' : 'No'} ({(glasses.probability * 100).toFixed(1)}%)</p>
       )}
-      <button onClick={isPaused ? resume : pause}>
-        {isPaused ? 'Resume' : 'Pause'}
-      </button>
+      {blink && <p>EAR: {blink.ear?.toFixed(3) ?? '—'}</p>}
     </div>
   );
 }`,

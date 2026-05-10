@@ -94,6 +94,26 @@ if (result?.rightBlinking && !result.leftBlinking) {
 }
 ```
 
+## Sharing a video element
+
+To run multiple detectors on the same `<video>` element, create one ref and pass it to each hook via the `videoRef` option:
+
+```tsx
+import { useRef } from "react";
+import { useBlinkDetector, useHeadPoseDetector } from "@framefind/react";
+
+export function MultiDetector() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { result: blinkResult } = useBlinkDetector({ videoRef });
+  const { result: poseResult } = useHeadPoseDetector({ videoRef });
+
+  return <video ref={videoRef} autoPlay playsInline muted />;
+}
+```
+
+When `videoRef` is provided the hook does not create its own ref and does not return one — attach the shared ref directly to the element.
+
 ## Pausing and resetting
 
 ```tsx

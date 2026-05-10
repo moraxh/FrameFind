@@ -26,6 +26,12 @@ export type UseBlinkDetectorOptions = BlinkDetectorOptions & {
 		leftEar: number | null;
 		rightEar: number | null;
 	}) => void;
+
+	/**
+	 * Provide an existing ref to share a single <video> element across multiple hooks.
+	 * When omitted the hook creates its own ref.
+	 */
+	videoRef?: RefObject<HTMLVideoElement | null>;
 };
 
 export type UseBlinkDetectorResult = {
@@ -62,9 +68,11 @@ export function useBlinkDetector(
 		minFaceDetectionConfidence,
 		minFacePresenceConfidence,
 		minTrackingConfidence,
+		videoRef: externalVideoRef,
 	} = opts;
 
-	const videoRef = useRef<HTMLVideoElement | null>(null);
+	const internalVideoRef = useRef<HTMLVideoElement | null>(null);
+	const videoRef = externalVideoRef ?? internalVideoRef;
 
 	const detectorRef = useRef<BlinkDetector | null>(null);
 

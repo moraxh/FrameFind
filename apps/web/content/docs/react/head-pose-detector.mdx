@@ -93,16 +93,16 @@ useHeadPoseDetector({
   // Throttle React state updates. Default: 0 (update every frame)
   uiUpdateIntervalMs: 0,
 
-  // Smoothing filter for angles. See below.
-  smoothing: { type: "ema", alpha: 0.3 },
+  // Smoothing filter for angles. Default: { type: "oneEuro" }. See below.
+  smoothing: { type: "oneEuro" },
 });
 ```
 
 ## Smoothing
 
-Raw landmark output can be jittery. The hook supports two smoothing modes:
+Raw landmark output can be jittery. The hook supports two smoothing modes. The default is **One Euro filter**.
 
-**EMA (exponential moving average)** — fast, simple. `alpha` controls how much weight recent frames get. Lower = smoother but more lag.
+**EMA (exponential moving average)** — fast, simple. `alpha` controls how much weight recent frames get (default `0.15`). Lower = smoother but more lag.
 
 ```ts
 smoothing: { type: "ema", alpha: 0.2 }
@@ -129,6 +129,26 @@ const { videoRef, result } = useHeadPoseDetector({ useWorker: true });
 ```
 
 The API is identical — the hook handles the worker lifecycle and transfers results back to the main thread automatically.
+
+## Sharing a video element
+
+To run multiple detectors on the same `<video>` element, create one ref and pass it to each hook via the `videoRef` option:
+
+```tsx
+import { useRef } from "react";
+import { useHeadPoseDetector, useGlassesDetector } from "@framefind/react";
+
+export function MultiDetector() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { result: poseResult } = useHeadPoseDetector({ videoRef });
+  const { result: glassesResult } = useGlassesDetector({ videoRef });
+
+  return <video ref={videoRef} autoPlay playsInline muted />;
+}
+```
+
+When `videoRef` is provided the hook does not create its own ref and does not return one — attach the shared ref directly to the element.
 
 ## Pausing and resetting
 
