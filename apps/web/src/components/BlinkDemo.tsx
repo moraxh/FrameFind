@@ -97,7 +97,7 @@ export function BlinkDemo() {
     setFlashKey((k) => k + 1);
   }, []);
 
-  const { videoRef, state, loading: modelLoading } = useBlinkDetector({
+  const { videoRef, result, loading: modelLoading } = useBlinkDetector({
     enabled: true,
     onBlink: handleBlink,
   });
@@ -125,7 +125,7 @@ export function BlinkDemo() {
     setBlinkCount(0);
   };
 
-  const hasFace = stream && state.faceDetected;
+  const hasFace = stream && result.faceDetected;
 
   return (
     <div className="bg-neutral-950 border border-neutral-800/60 rounded-2xl overflow-hidden">
@@ -199,7 +199,7 @@ export function BlinkDemo() {
         </AnimatePresence>
 
         {/* No face warning */}
-        {stream && !state.faceDetected && (
+        {stream && !result.faceDetected && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500/20 border border-yellow-500/40 backdrop-blur-sm px-3 py-1 rounded-full">
             <span className="text-[10px] font-mono text-yellow-400">
               No face detected
@@ -219,9 +219,9 @@ export function BlinkDemo() {
         <div className="flex gap-3">
           <EarBar
             label="EAR"
-            ear={hasFace ? state.smoothedEar : null}
-            baseline={state.baselineEar}
-            isBlinking={state.isBlinking}
+            ear={hasFace ? result.smoothedEar : null}
+            baseline={result.baselineEar}
+            isBlinking={result.isBlinking}
           />
         </div>
 

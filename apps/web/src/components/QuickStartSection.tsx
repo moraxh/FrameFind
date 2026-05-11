@@ -27,7 +27,7 @@ export default function App() {
     threshold: 0.35,
   });
 
-  const { state: blink } = useBlinkDetector({
+  const { result: blink } = useBlinkDetector({
     videoRef,
     onBlink: (ear)      => console.log('blink!', ear),
     onFaceLost: ()      => console.log('face lost'),

@@ -41,7 +41,7 @@ export function App() {
       {glasses.loading && <p>Loading…</p>}
       {glasses.result  && <p>Glasses: {glasses.result.glasses ? 'yes' : 'no'}</p>}
       {headPose.result && <p>Yaw: {headPose.result.yaw.toFixed(1)}°</p>}
-      {blink.state     && <p>Blinking: {blink.state.isBlinking ? 'yes' : 'no'}</p>}
+      {blink.result    && <p>Blinking: {blink.result.isBlinking ? 'yes' : 'no'}</p>}
     </div>
   );
 }`,

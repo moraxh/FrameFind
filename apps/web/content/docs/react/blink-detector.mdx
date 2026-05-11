@@ -16,7 +16,7 @@ import { useState } from "react";
 export function BlinkCounter() {
   const [count, setCount] = useState(0);
 
-  const { videoRef, state, loading } = useBlinkDetector({
+  const { videoRef, result, loading } = useBlinkDetector({
     onBlink: (ear) => setCount((n) => n + 1),
   });
 
@@ -24,7 +24,7 @@ export function BlinkCounter() {
     <div>
       <video ref={videoRef} autoPlay playsInline muted />
       {loading && <p>Loading model…</p>}
-      {!state.faceDetected && !loading && <p>No face detected</p>}
+      {!result.faceDetected && !loading && <p>No face detected</p>}
       <p>Blinks: {count}</p>
     </div>
   );
@@ -33,10 +33,10 @@ export function BlinkCounter() {
 
 `onBlink` fires once per detected closure, not once per frame. It receives the minimum EAR across both eyes at the moment of detection — lower values indicate a tighter blink.
 
-## The state object
+## The result object
 
 ```ts
-type BlinkState = {
+type BlinkStateResult = {
   faceDetected:   boolean;       // face visible in current frame
   isBlinking:     boolean;       // eyes are currently closed
   blinkDurationMs: number;       // ms eyes have been continuously closed (0 when open)
@@ -86,14 +86,14 @@ useBlinkDetector({
 `blinkDurationMs` lets you distinguish intent without any extra state:
 
 ```tsx
-const { state } = useBlinkDetector({
+const { result } = useBlinkDetector({
   onBlink: (ear) => {
     // fires on the leading edge of each closure
   },
 });
 
 // In your render or a useEffect:
-if (state.isBlinking && state.blinkDurationMs > 500) {
+if (result.isBlinking && result.blinkDurationMs > 500) {
   // eyes held shut for > 500ms
 }
 ```
@@ -109,7 +109,7 @@ import { useBlinkDetector, useHeadPoseDetector } from "@framefind/react";
 export function MultiDetector() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const { state: blinkState } = useBlinkDetector({ videoRef });
+  const { result: blinkResult } = useBlinkDetector({ videoRef });
   const { result: poseResult } = useHeadPoseDetector({ videoRef });
 
   return <video ref={videoRef} autoPlay playsInline muted />;
