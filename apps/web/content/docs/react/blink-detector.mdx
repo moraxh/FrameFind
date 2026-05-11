@@ -3,7 +3,7 @@ title: useBlinkDetector
 description: Detect eye blinks in a live webcam feed using MediaPipe face landmarks.
 ---
 
-`useBlinkDetector` tracks eye aspect ratio (EAR) and MediaPipe blendshapes to detect blinks in real time. It calibrates a baseline EAR automatically during the first ~500ms of detection, then fires `onBlink` whenever a blink is detected.
+`useBlinkDetector` combines EAR smoothing, baseline drift, and MediaPipe blendshapes to detect blinks in real time. It calibrates a personal baseline during the first ~500ms of face presence and fires `onBlink` on each detected closure.
 
 ## Basic usage
 
@@ -16,60 +16,62 @@ import { useState } from "react";
 export function BlinkCounter() {
   const [count, setCount] = useState(0);
 
-  const { videoRef, result, loading } = useBlinkDetector({
-    onBlink: () => setCount((n) => n + 1),
+  const { videoRef, state, loading } = useBlinkDetector({
+    onBlink: (ear) => setCount((n) => n + 1),
   });
 
   return (
     <div>
       <video ref={videoRef} autoPlay playsInline muted />
-      {loading && <p>Calibrating...</p>}
-      {result && !result.calibrated && <p>Warming up...</p>}
+      {loading && <p>Loading model…</p>}
+      {!state.faceDetected && !loading && <p>No face detected</p>}
       <p>Blinks: {count}</p>
     </div>
   );
 }
 ```
 
-The `onBlink` callback fires once per detected blink event, not once per frame. It receives the EAR values at the moment of detection.
+`onBlink` fires once per detected closure, not once per frame. It receives the minimum EAR across both eyes at the moment of detection — lower values indicate a tighter blink.
 
-## The result object
+## The state object
 
 ```ts
-type BlinkResult = {
-  blinkDetected: boolean;  // true on the frame the blink fires
-  ear: number | null;      // average EAR across both eyes
-  leftEar: number | null;  // left eye EAR
-  rightEar: number | null; // right eye EAR
-  leftBlinking: boolean;   // left eye is currently closed
-  rightBlinking: boolean;  // right eye is currently closed
-  faceDetected: boolean;   // face visible in frame
-  calibrated: boolean;     // baseline EAR has been established
+type BlinkState = {
+  faceDetected:   boolean;       // face visible in current frame
+  isBlinking:     boolean;       // eyes are currently closed
+  blinkDurationMs: number;       // ms eyes have been continuously closed (0 when open)
+  ear:            number | null; // smoothed avg EAR (both eyes)
+  baselineEar:    number | null; // learned open-eye baseline (null during warmup)
+  smoothedEar:    number | null; // same as ear — exponentially filtered
+  landmarks:      Point2D[] | null; // raw MediaPipe 478-point face mesh
 };
 ```
 
-`blinkDetected` is only true for one frame — the frame where the blink was registered. Don't use it to count blinks by watching state; use `onBlink` instead.
+`baselineEar` is `null` for the first ~500ms. Until it's established the detector won't fire blinks.
 
-`calibrated` becomes true after about 500ms of face presence. Until then the detector won't fire blinks.
+`blinkDurationMs` counts up while `isBlinking` is true. Use it to distinguish a quick blink (~100ms) from a deliberate held closure (>500ms).
 
 ## Options
 
 ```ts
 useBlinkDetector({
-  // Called each time a blink is detected
-  onBlink: ({ ear, leftEar, rightEar }) => {},
+  // Callbacks — all optional
+  onBlink:    (ear: number) => void,       // fires once per detected closure
+  onFaceLost: ()            => void,       // fires when face absent for ~165ms
+  onEARChange:(ear: number) => void,       // fires every frame with smoothed EAR
+  onLandmarks:(lm: Point2D[] | null) => void,
 
   // Whether to run detection at all. Default: true
   enabled: true,
 
   // MediaPipe model and WASM — both default to the FrameFind CDN
   faceLandmarkerModelUrl: "https://cdn.framefind.moraxh.dev/...",
-  mediapipeWasmPath: "https://cdn.framefind.moraxh.dev/...",
+  mediapipeWasmPath:      "https://cdn.framefind.moraxh.dev/...",
 
   // MediaPipe face landmarker settings
   minFaceDetectionConfidence: 0.5,
-  minFacePresenceConfidence: 0.5,
-  minTrackingConfidence: 0.5,
+  minFacePresenceConfidence:  0.5,
+  minTrackingConfidence:      0.5,
 
   // Prefer GPU inference. Default: true, falls back to CPU automatically
   preferGpu: true,
@@ -79,24 +81,26 @@ useBlinkDetector({
 });
 ```
 
-## Wink detection
+## Detecting held closures
 
-`leftBlinking` and `rightBlinking` let you distinguish a wink from a full blink:
+`blinkDurationMs` lets you distinguish intent without any extra state:
 
 ```tsx
-const { result } = useBlinkDetector();
+const { state } = useBlinkDetector({
+  onBlink: (ear) => {
+    // fires on the leading edge of each closure
+  },
+});
 
-if (result?.leftBlinking && !result.rightBlinking) {
-  // left eye wink
-}
-if (result?.rightBlinking && !result.leftBlinking) {
-  // right eye wink
+// In your render or a useEffect:
+if (state.isBlinking && state.blinkDurationMs > 500) {
+  // eyes held shut for > 500ms
 }
 ```
 
 ## Sharing a video element
 
-To run multiple detectors on the same `<video>` element, create one ref and pass it to each hook via the `videoRef` option:
+To run multiple detectors on the same `<video>`, create one ref and pass it to each hook:
 
 ```tsx
 import { useRef } from "react";
@@ -105,28 +109,24 @@ import { useBlinkDetector, useHeadPoseDetector } from "@framefind/react";
 export function MultiDetector() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const { result: blinkResult } = useBlinkDetector({ videoRef });
+  const { state: blinkState } = useBlinkDetector({ videoRef });
   const { result: poseResult } = useHeadPoseDetector({ videoRef });
 
   return <video ref={videoRef} autoPlay playsInline muted />;
 }
 ```
 
-When `videoRef` is provided the hook does not create its own ref and does not return one — attach the shared ref directly to the element.
-
 ## Pausing and resetting
 
 ```tsx
 const { videoRef, isPaused, pause, resume, reset } = useBlinkDetector({
-  onBlink: () => {},
+  onBlink: (ear) => console.log("blink", ear),
 });
 
 // Freeze detection without stopping the camera
 pause();
 resume();
 
-// Clear EAR history and re-calibrate from scratch
+// Clear EAR history and re-calibrate from scratch (~500ms warmup again)
 reset();
 ```
-
-Calling `reset()` discards the calibrated baseline, so the hook will spend another ~500ms re-calibrating.

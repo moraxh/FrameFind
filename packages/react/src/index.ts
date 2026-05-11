@@ -3,7 +3,11 @@ export type { UseGlassesDetectorOptions, UseGlassesDetectorResult } from "./useG
 export { useHeadPoseDetector } from "./useHeadPoseDetector.js";
 export type { UseHeadPoseDetectorOptions, UseHeadPoseDetectorResult } from "./useHeadPoseDetector.js";
 export { useBlinkDetector } from "./useBlinkDetector.js";
-export type { UseBlinkDetectorOptions, UseBlinkDetectorResult } from "./useBlinkDetector.js";
+export type {
+	BlinkState,
+	UseBlinkDetectorOptions,
+	UseBlinkDetectorResult,
+} from "./useBlinkDetector.js";
 export { useVideoFrameDetect } from "./useVideoFrameDetect.js";
 export type { DetectionResult, HeadPoseResult } from "@framefind/utils";
-export type { BlinkResult } from "@framefind/core";
+export type { Point2D } from "@framefind/core";

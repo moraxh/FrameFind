@@ -27,9 +27,11 @@ export default function App() {
     threshold: 0.35,
   });
 
-  const { result: blink } = useBlinkDetector({
+  const { state: blink } = useBlinkDetector({
     videoRef,
-    onBlink: () => console.log('blink!'),
+    onBlink: (ear)      => console.log('blink!', ear),
+    onFaceLost: ()      => console.log('face lost'),
+    onEARChange: (ear)  => console.log('ear:', ear),
   });
 
   useEffect(() => {
@@ -50,7 +52,13 @@ export default function App() {
       {glasses && (
         <p>Glasses: {glasses.glasses ? 'Yes' : 'No'} ({(glasses.probability * 100).toFixed(1)}%)</p>
       )}
-      {blink && <p>EAR: {blink.ear?.toFixed(3) ?? '—'}</p>}
+      {blink && (
+        <>
+          <p>State: {blink.isBlinking ? 'closed' : 'open'}</p>
+          <p>EAR: {blink.smoothedEar?.toFixed(3) ?? '—'}</p>
+          <p>Baseline: {blink.baselineEar?.toFixed(3) ?? '—'}</p>
+        </>
+      )}
     </div>
   );
 }`,

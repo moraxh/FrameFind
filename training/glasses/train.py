@@ -10,8 +10,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from dataset import GlassesROIDataset, precompute_cache, stratified_split
-from model import GlassesNet
+from training.glasses.dataset import GlassesROIDataset, precompute_cache, stratified_split
+from training.glasses.model import GlassesNet
 
 HERE = Path(__file__).resolve().parent
 DATA_ROOT = HERE / "dataset"

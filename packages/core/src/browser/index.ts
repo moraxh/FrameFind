@@ -3,7 +3,7 @@ export type {
 	DetectorConfig,
 	HeadPoseResult,
 } from "@framefind/utils";
-export type { BlinkDetectorOptions, BlinkResult } from "./blinkDetector.js";
+export type { BlinkDetectorOptions, Point2D } from "./blinkDetector.js";
 export { BlinkDetector } from "./blinkDetector.js";
 export type { GlassesDetectorOptions } from "./detector.js";
 export { GlassesDetector } from "./detector.js";

@@ -11,7 +11,7 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from preprocess import EyeROIExtractor, normalize, ROI_SIZE
+from training.glasses.preprocess import EyeROIExtractor, normalize, ROI_SIZE
 
 
 def _augment(roi: np.ndarray) -> np.ndarray:

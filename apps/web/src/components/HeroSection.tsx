@@ -29,7 +29,11 @@ export function App() {
 
   const glasses  = useGlassesDetector({ videoRef });
   const headPose = useHeadPoseDetector({ videoRef });
-  const blink    = useBlinkDetector({ videoRef });
+  const blink    = useBlinkDetector({
+    videoRef,
+    onBlink: (ear) => console.log('blink!', ear),
+    onFaceLost: () => console.log('face lost'),
+  });
 
   return (
     <div>
@@ -37,7 +41,7 @@ export function App() {
       {glasses.loading && <p>Loading…</p>}
       {glasses.result  && <p>Glasses: {glasses.result.glasses ? 'yes' : 'no'}</p>}
       {headPose.result && <p>Yaw: {headPose.result.yaw.toFixed(1)}°</p>}
-      {blink.result    && <p>Blink: {blink.result.blinkDetected ? 'blink!' : '—'}</p>}
+      {blink.state     && <p>Blinking: {blink.state.isBlinking ? 'yes' : 'no'}</p>}
     </div>
   );
 }`,
@@ -55,14 +59,19 @@ await Promise.all([glasses.load(), headPose.load(), blink.load()]);
 const video  = document.querySelector('video')!;
 const canvas = document.createElement('canvas');
 
-async function loop() {
+blink.setCallbacks({
+  onBlink:    (ear) => console.log('blink!', ear),
+  onFaceLost: ()    => console.log('face lost'),
+});
+
+function loop() {
   const gResult = await glasses.detectFromVideoFrame(video, canvas);
   const hResult = headPose.detectFromVideo(video);
-  const bResult = blink.detectFromVideo(video);
+  blink.processFrame(video);
 
-  console.log('glasses:',  gResult.glasses);
-  console.log('yaw:',      hResult.yaw);
-  console.log('blinking:', bResult.blinkDetected);
+  console.log('glasses:', gResult.glasses);
+  console.log('yaw:',     hResult.yaw);
+  console.log('ear:',     blink.smoothedEarValue);
 
   requestAnimationFrame(loop);
 }

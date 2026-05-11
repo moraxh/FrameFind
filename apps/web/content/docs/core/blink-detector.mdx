@@ -1,78 +1,86 @@
 ---
 title: BlinkDetector
-description: EAR-based blink detection for the browser, without React.
+description: EAR + blendshape blink detection for the browser, without React.
 ---
 
-`BlinkDetector` gives you blink detection without any React dependency. You call `detectFromVideo` manually on each frame, typically inside a `requestVideoFrameCallback` or `requestAnimationFrame` loop.
+`BlinkDetector` gives you blink detection without any React dependency. Pass callbacks at construction time, call `processFrame` on each animation frame, and the detector fires `onBlink` whenever a closure is detected.
 
-## Browser usage
+## Basic usage
 
 ```ts
 import { BlinkDetector } from "@framefind/core";
 
-const detector = new BlinkDetector({});
+const detector = new BlinkDetector({
+  onBlink: (ear) => console.log("blink", ear),
+  onEARChange: (ear) => console.log("ear", ear),
+});
+
 await detector.load();
 
-function onFrame() {
-  const result = detector.detectFromVideo(videoEl);
-  if (result.blinkDetected) {
-    console.log("blink");
-  }
-  requestAnimationFrame(onFrame);
+const video = document.querySelector("video")!;
+
+function loop() {
+  detector.processFrame(video);
+  requestAnimationFrame(loop);
 }
 
-requestAnimationFrame(onFrame);
+video.addEventListener("play", loop, { once: true });
 ```
 
-`detectFromVideo` is synchronous and returns the same `BlinkResult` type as the React hook. It internally throttles inference to ~50fps so calling it faster than that is harmless.
+`processFrame` is synchronous and internally throttles to ~30fps — calling it from a 60fps `requestAnimationFrame` loop is fine.
 
-## Node.js
+## Detection algorithm
 
-```ts
-import { BlinkDetectorNode } from "@framefind/core/node";
+Three signals fire independently; whichever crosses its threshold first wins:
 
-const detector = new BlinkDetectorNode({});
-await detector.load();
+1. **Blendshape (primary)** — MediaPipe `eyeBlinkLeft`/`eyeBlinkRight` ARKit scores. Fires when either eye score stays above `0.5` for ≥50ms.
+2. **Asymmetry** — If one eye EAR is less than 45% of the other, treated as a wink/closure. Fires after ≥60ms.
+3. **EAR + drop-rate** — Smoothed eye aspect ratio drops below `baseline × 0.65` with a minimum velocity. Fires after ≥60ms. Baseline is learned from the first ~500ms of face presence and drifts upward slowly when eyes are open.
 
-// pass a tfjs Tensor3D or compatible image object
-const result = await detector.detectFromImage(image);
-```
-
-The Node.js variant doesn't have `detectFromVideo` (there's no browser video element). You feed it individual image frames.
+After a blink fires, re-arming requires both a **refractory period** (180ms) and a **relaxation delta** (blendshape must drop ≥0.15 from its post-fire peak). This allows fast consecutive blinks without double-counting a single held closure.
 
 ## Options
 
 ```ts
 new BlinkDetector({
+  // Callbacks — all optional
+  onBlink:    (ear: number) => void,       // fires once per detected closure
+  onFaceLost: ()            => void,       // fires when face absent for ~165ms
+  onEARChange:(ear: number) => void,       // fires every frame with smoothed EAR
+  onLandmarks:(lm: Point2D[] | null) => void,
+
   // MediaPipe model and WASM — both default to the FrameFind CDN
   faceLandmarkerModelUrl: "https://cdn.framefind.moraxh.dev/...",
-  mediapipeWasmPath: "https://cdn.framefind.moraxh.dev/...",
+  mediapipeWasmPath:      "https://cdn.framefind.moraxh.dev/...",
 
   minFaceDetectionConfidence: 0.5,
-  minFacePresenceConfidence: 0.5,
-  minTrackingConfidence: 0.5,
+  minFacePresenceConfidence:  0.5,
+  minTrackingConfidence:      0.5,
 
   // Prefer GPU via WebGL delegate. Default: true, falls back to CPU
   preferGpu: true,
 });
 ```
 
-## Result type
+## Updating callbacks after construction
 
 ```ts
-type BlinkResult = {
-  blinkDetected: boolean;
-  ear: number | null;
-  leftEar: number | null;
-  rightEar: number | null;
-  leftBlinking: boolean;
-  rightBlinking: boolean;
-  faceDetected: boolean;
-  calibrated: boolean;
-};
+detector.setCallbacks({
+  onBlink:    (ear) => console.log("blink", ear),
+  onFaceLost: ()    => console.log("face lost"),
+});
 ```
 
-`blinkDetected` is true only on the single frame where the blink event fires. Check `calibrated` before trusting detections — it becomes true after ~500ms of face presence.
+Only the keys you pass are updated — the rest stay unchanged.
+
+## Getters
+
+```ts
+detector.isBlinking       // boolean — eyes currently closed
+detector.blinkDurationMs  // number  — ms eyes have been continuously closed (0 when open)
+detector.smoothedEarValue // number | null — exponentially smoothed avg EAR
+detector.baselineEarValue // number | null — current open-eye EAR baseline
+```
 
 ## Resetting
 
@@ -80,7 +88,7 @@ type BlinkResult = {
 detector.resetHistory();
 ```
 
-Clears baseline EAR, smoothing state, and blink history. The detector will re-calibrate from the next frame.
+Clears EAR baseline, smoothing state, and refractory timers. The detector re-calibrates from the next frame (~500ms warmup).
 
 ## Cleanup
 

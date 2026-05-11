@@ -4,7 +4,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-TARGET_DIR="$SCRIPT_DIR/../../training/dataset"
+TARGET_DIR="$SCRIPT_DIR/../../glasses/training/dataset"
 META_FILE="$TARGET_DIR/meta.txt"
 SRC_DIR="$TARGET_DIR/MeGlass_ori"
 GLASSES_DIR="$TARGET_DIR/glasses"

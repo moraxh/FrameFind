@@ -1,17 +1,23 @@
-import { type FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+import type { FaceLandmarker } from "@mediapipe/tasks-vision";
 
 const EAR_SMOOTH_TAU_MS = 70;
 const EAR_BASELINE_TAU_MS = 3000;
 const EAR_ENTER_RATIO = 0.65;
-const EAR_EXIT_RATIO = 0.75;
+const EAR_EXIT_RATIO = 0.7;
 const EAR_MIN_LOW_MS = 60;
 const EAR_MIN_DROP_PER_SEC = 1.2;
 const BASELINE_WARMUP_MS = 500;
 const MISSING_FACE_MS = 165;
 const EAR_ASYMMETRY_RATIO = 0.45;
+
 const BLENDSHAPE_BLINK_ENTER = 0.5;
-const BLENDSHAPE_BLINK_EXIT = 0.35;
+const BLENDSHAPE_BLINK_EXIT = 0.5;
 const BLENDSHAPE_MIN_LOW_MS = 50;
+
+// Minimum time between consecutive blink fires (refractory period).
+const BLINK_REFRACTORY_MS = 180;
+// Blendshape must drop at least this much after a blink fire before we'll re-arm.
+const BLINK_RELAX_DELTA = 0.15;
 
 const LEFT_EYE = [362, 385, 387, 263, 373, 380];
 const RIGHT_EYE = [33, 160, 158, 133, 153, 144];
@@ -21,6 +27,8 @@ const DEFAULT_FACE_LANDMARKER_MODEL =
 const DEFAULT_MEDIAPIPE_WASM =
 	"https://cdn.framefind.moraxh.dev/mediapipe/tasks-vision/0.10.35/wasm";
 
+export type Point2D = { x: number; y: number };
+
 export type BlinkDetectorOptions = {
 	faceLandmarkerModelUrl?: string;
 	mediapipeWasmPath?: string;
@@ -28,20 +36,11 @@ export type BlinkDetectorOptions = {
 	minFaceDetectionConfidence?: number;
 	minFacePresenceConfidence?: number;
 	minTrackingConfidence?: number;
+	onBlink?: (ear: number) => void;
+	onEARChange?: (ear: number) => void;
+	onLandmarks?: (landmarks: Point2D[] | null) => void;
+	onFaceLost?: () => void;
 };
-
-export type BlinkResult = {
-	blinkDetected: boolean;
-	ear: number | null;
-	leftEar: number | null;
-	rightEar: number | null;
-	leftBlinking: boolean;
-	rightBlinking: boolean;
-	faceDetected: boolean;
-	calibrated: boolean;
-};
-
-type Point2D = { x: number; y: number };
 
 function dist(a: Point2D, b: Point2D): number {
 	return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
@@ -62,15 +61,15 @@ function eyeAspectRatio(
 
 function isEyeValid(landmarks: Point2D[], eyeIndices: number[]): boolean {
 	return eyeIndices.every((i) => {
-		const p = landmarks[i];
+		const point = landmarks[i];
 		return (
-			p !== undefined &&
-			Number.isFinite(p.x) &&
-			Number.isFinite(p.y) &&
-			p.x >= 0 &&
-			p.x <= 1 &&
-			p.y >= 0 &&
-			p.y <= 1
+			point !== undefined &&
+			Number.isFinite(point.x) &&
+			Number.isFinite(point.y) &&
+			point.x >= 0 &&
+			point.x <= 1 &&
+			point.y >= 0 &&
+			point.y <= 1
 		);
 	});
 }
@@ -98,26 +97,29 @@ function newEyeState(): EyeState {
 }
 
 export class BlinkDetector {
-	private faceLandmarker: FaceLandmarker | null = null;
-	private opts: Required<BlinkDetectorOptions>;
-	private blinking = false;
-	private leftEye: EyeState = newEyeState();
-	private rightEye: EyeState = newEyeState();
-	private missingFaceMs = 0;
-	private missingEyeMs = 0;
-	private lastInferenceTime = 0;
-	private lastInferenceTimestamp = 0;
-	private lastResult: BlinkResult = {
-		blinkDetected: false,
-		ear: null,
-		leftEar: null,
-		rightEar: null,
-		leftBlinking: false,
-		rightBlinking: false,
-		faceDetected: false,
-		calibrated: false,
-	};
-	private pendingBlink = false;
+	private blinking: boolean;
+	private opts: Required<
+		Omit<
+			BlinkDetectorOptions,
+			"onBlink" | "onEARChange" | "onLandmarks" | "onFaceLost"
+		>
+	>;
+	private onBlinkCb: ((ear: number) => void) | null;
+	private onFaceLostCb: (() => void) | null;
+	private onEARChangeCb: ((ear: number) => void) | null;
+	private onLandmarksCb: ((landmarks: Point2D[] | null) => void) | null;
+	private faceLandmarker: FaceLandmarker | null;
+	private lastVideoTime: number;
+	private lastInferenceTime: number;
+	private lastInferenceTimestamp: number;
+	private leftEye: EyeState;
+	private rightEye: EyeState;
+	private missingFaceMs: number;
+	private missingEyeMs: number;
+	private lastBlinkAt: number;
+	private maxBlendSinceFire: number;
+	private relaxedSinceFire: boolean;
+	private blinkStartedAt: number | null;
 
 	constructor(opts: BlinkDetectorOptions = {}) {
 		this.opts = {
@@ -129,6 +131,24 @@ export class BlinkDetector {
 			minFacePresenceConfidence: opts.minFacePresenceConfidence ?? 0.5,
 			minTrackingConfidence: opts.minTrackingConfidence ?? 0.5,
 		};
+		this.onBlinkCb = opts.onBlink ?? null;
+		this.onEARChangeCb = opts.onEARChange ?? null;
+		this.onLandmarksCb = opts.onLandmarks ?? null;
+		this.onFaceLostCb = opts.onFaceLost ?? null;
+
+		this.blinking = false;
+		this.faceLandmarker = null;
+		this.lastVideoTime = -1;
+		this.lastInferenceTime = 0;
+		this.lastInferenceTimestamp = 0;
+		this.leftEye = newEyeState();
+		this.rightEye = newEyeState();
+		this.missingFaceMs = 0;
+		this.missingEyeMs = 0;
+		this.lastBlinkAt = -Infinity;
+		this.maxBlendSinceFire = 0;
+		this.relaxedSinceFire = true;
+		this.blinkStartedAt = null;
 	}
 
 	async load(): Promise<void> {
@@ -169,6 +189,46 @@ export class BlinkDetector {
 		});
 	}
 
+	setCallbacks(opts: {
+		onBlink?: (ear: number) => void;
+		onEARChange?: (ear: number) => void;
+		onLandmarks?: (landmarks: Point2D[] | null) => void;
+		onFaceLost?: () => void;
+	}): void {
+		if (opts.onBlink !== undefined) this.onBlinkCb = opts.onBlink;
+		if (opts.onEARChange !== undefined) this.onEARChangeCb = opts.onEARChange;
+		if (opts.onLandmarks !== undefined) this.onLandmarksCb = opts.onLandmarks;
+		if (opts.onFaceLost !== undefined) this.onFaceLostCb = opts.onFaceLost;
+	}
+
+	get baselineEarValue(): number | null {
+		const l = this.leftEye.baseline;
+		const r = this.rightEye.baseline;
+		if (l === null && r === null) return null;
+		if (l === null) return r;
+		if (r === null) return l;
+		return (l + r) / 2;
+	}
+
+	get smoothedEarValue(): number | null {
+		const l = this.leftEye.smoothed;
+		const r = this.rightEye.smoothed;
+		if (l === null && r === null) return null;
+		if (l === null) return r;
+		if (r === null) return l;
+		return (l + r) / 2;
+	}
+
+	get isBlinking(): boolean {
+		return this.blinking;
+	}
+
+	/** Milliseconds the eyes have been continuously closed. 0 when open. */
+	get blinkDurationMs(): number {
+		if (!this.blinking || this.blinkStartedAt === null) return 0;
+		return performance.now() - this.blinkStartedAt;
+	}
+
 	private updateEyeSmooth(
 		eye: EyeState,
 		raw: number,
@@ -176,9 +236,11 @@ export class BlinkDetector {
 		now: number,
 	): void {
 		eye.prevSmoothed = eye.smoothed;
-		const a = 1 - Math.exp(-dt_ms / EAR_SMOOTH_TAU_MS);
+		const smoothAlpha = 1 - Math.exp(-dt_ms / EAR_SMOOTH_TAU_MS);
 		eye.smoothed =
-			eye.smoothed === null ? raw : eye.smoothed * (1 - a) + raw * a;
+			eye.smoothed === null
+				? raw
+				: eye.smoothed * (1 - smoothAlpha) + raw * smoothAlpha;
 
 		if (eye.baseline === null) {
 			if (eye.warmupStart === null) eye.warmupStart = now;
@@ -192,8 +254,9 @@ export class BlinkDetector {
 				eye.baselineSamples = [];
 			}
 		} else if (!this.blinking && eye.smoothed >= eye.baseline) {
-			const ba = 1 - Math.exp(-dt_ms / EAR_BASELINE_TAU_MS);
-			eye.baseline = eye.baseline * (1 - ba) + eye.smoothed * ba;
+			const baselineAlpha = 1 - Math.exp(-dt_ms / EAR_BASELINE_TAU_MS);
+			eye.baseline =
+				eye.baseline * (1 - baselineAlpha) + eye.smoothed * baselineAlpha;
 		}
 	}
 
@@ -228,61 +291,6 @@ export class BlinkDetector {
 		);
 	}
 
-	get calibrated(): boolean {
-		return this.leftEye.baseline !== null && this.rightEye.baseline !== null;
-	}
-
-	get smoothedEar(): number | null {
-		const l = this.leftEye.smoothed;
-		const r = this.rightEye.smoothed;
-		if (l === null && r === null) return null;
-		if (l === null) return r;
-		if (r === null) return l;
-		return (l + r) / 2;
-	}
-
-	detectFromVideo(video: HTMLVideoElement): BlinkResult {
-		if (!this.faceLandmarker)
-			return { ...this.lastResult, blinkDetected: false };
-
-		if (
-			video.readyState < 2 ||
-			video.videoWidth === 0 ||
-			video.videoHeight === 0
-		) {
-			return { ...this.lastResult, blinkDetected: false };
-		}
-
-		const now = performance.now();
-		// Allow up to ~50fps (20ms) — blinks are ~100-150ms so we need dense sampling
-		if (now - this.lastInferenceTime < 20)
-			return { ...this.lastResult, blinkDetected: false };
-
-		this.lastInferenceTime = now;
-
-		const results = this.faceLandmarker.detectForVideo(video, now);
-		this.lastResult = this.processResults(results, now);
-		return this.lastResult;
-	}
-
-	private get leftBlinking(): boolean {
-		const l = this.leftEye;
-		if (l.baseline === null || l.smoothed === null) return false;
-		return (
-			l.smoothed < l.baseline * EAR_ENTER_RATIO ||
-			l.blendLowMs >= BLENDSHAPE_MIN_LOW_MS
-		);
-	}
-
-	private get rightBlinking(): boolean {
-		const r = this.rightEye;
-		if (r.baseline === null || r.smoothed === null) return false;
-		return (
-			r.smoothed < r.baseline * EAR_ENTER_RATIO ||
-			r.blendLowMs >= BLENDSHAPE_MIN_LOW_MS
-		);
-	}
-
 	private processResults(
 		results: {
 			faceLandmarks?: Point2D[][];
@@ -291,36 +299,36 @@ export class BlinkDetector {
 			}[];
 		},
 		now: number,
-	): BlinkResult {
+	): void {
 		const dt_ms =
 			this.lastInferenceTimestamp > 0
 				? Math.min(now - this.lastInferenceTimestamp, 200)
 				: 33;
 		this.lastInferenceTimestamp = now;
-		this.pendingBlink = false;
 
 		if (!results.faceLandmarks?.length) {
-			if (!this.blinking) {
-				this.missingFaceMs += dt_ms;
-				if (this.missingFaceMs >= MISSING_FACE_MS) {
-					this.blinking = true;
-					this.pendingBlink = true;
+			this.onLandmarksCb?.(null);
+			this.missingFaceMs += dt_ms;
+			if (
+				this.missingFaceMs >= MISSING_FACE_MS &&
+				now - this.lastBlinkAt >= BLINK_REFRACTORY_MS
+			) {
+				this.lastBlinkAt = now;
+				this.relaxedSinceFire = false;
+				this.blinking = true;
+				if (this.onFaceLostCb) {
+					this.onFaceLostCb();
+				} else {
+					this.onBlinkCb?.(0);
 				}
 			}
-			return {
-				blinkDetected: this.pendingBlink,
-				ear: null,
-				leftEar: null,
-				rightEar: null,
-				leftBlinking: false,
-				rightBlinking: false,
-				faceDetected: false,
-				calibrated: this.calibrated,
-			};
+			return;
 		}
 
 		this.missingFaceMs = 0;
+
 		const lm = results.faceLandmarks[0];
+		this.onLandmarksCb?.(lm);
 
 		const leftValid = isEyeValid(lm, LEFT_EYE);
 		const rightValid = isEyeValid(lm, RIGHT_EYE);
@@ -328,31 +336,28 @@ export class BlinkDetector {
 		const rightEAR = rightValid ? eyeAspectRatio(lm, RIGHT_EYE) : null;
 
 		if (!leftValid || !rightValid || leftEAR === null || rightEAR === null) {
-			if (!this.blinking) {
-				this.missingEyeMs += dt_ms;
-				if (this.missingEyeMs >= MISSING_FACE_MS) {
-					this.blinking = true;
-					this.pendingBlink = true;
+			this.missingEyeMs += dt_ms;
+			if (
+				this.missingEyeMs >= MISSING_FACE_MS &&
+				now - this.lastBlinkAt >= BLINK_REFRACTORY_MS
+			) {
+				this.lastBlinkAt = now;
+				this.relaxedSinceFire = false;
+				this.blinking = true;
+				if (this.onFaceLostCb) {
+					this.onFaceLostCb();
+				} else {
+					this.onBlinkCb?.(0);
 				}
 			}
-			return {
-				blinkDetected: this.pendingBlink,
-				ear: this.smoothedEar,
-				leftEar: this.leftEye.smoothed,
-				rightEar: this.rightEye.smoothed,
-				leftBlinking: this.leftBlinking,
-				rightBlinking: this.rightBlinking,
-				faceDetected: true,
-				calibrated: this.calibrated,
-			};
+			return;
 		}
 
 		this.missingEyeMs = 0;
 
-		// Signal 1: blendshapes (primary)
 		const cats = results.faceBlendshapes?.[0]?.categories ?? [];
-		let blendLeft = 0,
-			blendRight = 0;
+		let blendLeft = 0;
+		let blendRight = 0;
 		for (const c of cats) {
 			if (c.categoryName === "eyeBlinkLeft") blendLeft = c.score;
 			else if (c.categoryName === "eyeBlinkRight") blendRight = c.score;
@@ -363,7 +368,9 @@ export class BlinkDetector {
 				eye.blendLowMs += dt_ms;
 				return eye.blendLowMs >= BLENDSHAPE_MIN_LOW_MS;
 			}
-			if (score < BLENDSHAPE_BLINK_EXIT) eye.blendLowMs = 0;
+			if (score < BLENDSHAPE_BLINK_EXIT) {
+				eye.blendLowMs = 0;
+			}
 			return false;
 		};
 
@@ -373,92 +380,129 @@ export class BlinkDetector {
 		this.updateEyeSmooth(this.leftEye, leftEAR, dt_ms, now);
 		this.updateEyeSmooth(this.rightEye, rightEAR, dt_ms, now);
 
-		const leftSmoothed = this.leftEye.smoothed ?? leftEAR;
-		const rightSmoothed = this.rightEye.smoothed ?? rightEAR;
-		const avgEar = (leftSmoothed + rightSmoothed) / 2;
+		const avgSmoothed =
+			((this.leftEye.smoothed ?? leftEAR) +
+				(this.rightEye.smoothed ?? rightEAR)) /
+			2;
+		this.onEARChangeCb?.(avgSmoothed);
 
-		const makeResult = (blinkDetected: boolean): BlinkResult => ({
-			blinkDetected,
-			ear: avgEar,
-			leftEar: this.leftEye.smoothed,
-			rightEar: this.rightEye.smoothed,
-			leftBlinking: this.leftBlinking,
-			rightBlinking: this.rightBlinking,
-			faceDetected: true,
-			calibrated: this.calibrated,
-		});
-
-		if (!this.blinking && (blendLeftFire || blendRightFire)) {
-			this.blinking = true;
-			this.pendingBlink = true;
-			return makeResult(true);
+		const maxBlend = Math.max(blendLeft, blendRight);
+		if (maxBlend > this.maxBlendSinceFire) this.maxBlendSinceFire = maxBlend;
+		// Re-arm: blendshape dropped enough below the post-fire peak OR clearly open.
+		if (
+			!this.relaxedSinceFire &&
+			(maxBlend < BLENDSHAPE_BLINK_EXIT ||
+				maxBlend <= this.maxBlendSinceFire - BLINK_RELAX_DELTA)
+		) {
+			this.relaxedSinceFire = true;
+			this.maxBlendSinceFire = maxBlend;
 		}
 
-		// Signal 2: asymmetry wink fast-path
+		const canFire =
+			now - this.lastBlinkAt >= BLINK_REFRACTORY_MS && this.relaxedSinceFire;
+
+		const fire = (ear: number) => {
+			this.lastBlinkAt = now;
+			this.relaxedSinceFire = false;
+			this.maxBlendSinceFire = maxBlend;
+			if (!this.blinking) this.blinkStartedAt = now;
+			this.blinking = true;
+			this.leftEye.blendLowMs = 0;
+			this.rightEye.blendLowMs = 0;
+			this.leftEye.lowMs = 0;
+			this.rightEye.lowMs = 0;
+			this.onBlinkCb?.(ear);
+		};
+
+		// Visual "closed" state for UI (independent of fire gate).
+		const visuallyClosed =
+			blendLeft >= BLENDSHAPE_BLINK_ENTER || blendRight >= BLENDSHAPE_BLINK_ENTER;
+		if (!visuallyClosed) {
+			const open =
+				this.bothEyesOpen() &&
+				blendLeft < BLENDSHAPE_BLINK_EXIT &&
+				blendRight < BLENDSHAPE_BLINK_EXIT;
+			if (open) {
+				this.blinking = false;
+				this.blinkStartedAt = null;
+				this.leftEye.prevSmoothed = null;
+				this.rightEye.prevSmoothed = null;
+			}
+		}
+
+		if (canFire && (blendLeftFire || blendRightFire)) {
+			fire(Math.min(leftEAR, rightEAR));
+			return;
+		}
+
 		const maxEAR = Math.max(leftEAR, rightEAR);
 		const minEAR = Math.min(leftEAR, rightEAR);
 		if (maxEAR > 0 && minEAR / maxEAR < EAR_ASYMMETRY_RATIO) {
-			if (!this.blinking) {
+			if (canFire) {
 				const eye = leftEAR < rightEAR ? this.leftEye : this.rightEye;
 				eye.lowMs += dt_ms;
 				if (eye.lowMs >= EAR_MIN_LOW_MS) {
-					this.blinking = true;
-					this.pendingBlink = true;
-					return makeResult(true);
+					fire(minEAR);
 				}
 			}
-			return makeResult(false);
+			return;
 		}
 
-		// Signal 3: per-eye EAR + drop-rate gate
 		if (this.leftEye.baseline === null || this.rightEye.baseline === null) {
-			return { ...makeResult(false), calibrated: false };
+			return;
 		}
 
-		if (!this.blinking) {
+		if (canFire) {
 			const leftFire = this.eyeBlinkEntry(this.leftEye, dt_ms);
 			const rightFire = this.eyeBlinkEntry(this.rightEye, dt_ms);
 			if (leftFire || rightFire) {
-				this.blinking = true;
-				this.pendingBlink = true;
-				return makeResult(true);
+				fire(
+					Math.min(
+						this.leftEye.smoothed ?? leftEAR,
+						this.rightEye.smoothed ?? rightEAR,
+					),
+				);
 			}
-		} else if (
-			this.bothEyesOpen() &&
-			blendLeft < BLENDSHAPE_BLINK_EXIT &&
-			blendRight < BLENDSHAPE_BLINK_EXIT
+		}
+	}
+
+	processFrame(video: HTMLVideoElement): Point2D[] | null {
+		if (!this.faceLandmarker) return null;
+
+		if (
+			video.readyState < 2 ||
+			video.videoWidth === 0 ||
+			video.videoHeight === 0
 		) {
-			this.blinking = false;
-			this.leftEye.lowMs = 0;
-			this.rightEye.lowMs = 0;
-			this.leftEye.blendLowMs = 0;
-			this.rightEye.blendLowMs = 0;
-			this.leftEye.prevSmoothed = null;
-			this.rightEye.prevSmoothed = null;
+			return null;
 		}
 
-		return makeResult(false);
+		if (video.currentTime === this.lastVideoTime) return null;
+
+		const now = performance.now();
+		if (now - this.lastInferenceTime < 30) return null;
+
+		this.lastVideoTime = video.currentTime;
+		this.lastInferenceTime = now;
+
+		const results = this.faceLandmarker.detectForVideo(video, now);
+		this.processResults(results, now);
+		return results.faceLandmarks?.[0] ?? null;
 	}
 
 	resetHistory(): void {
 		this.blinking = false;
-		this.leftEye = newEyeState();
-		this.rightEye = newEyeState();
 		this.missingFaceMs = 0;
 		this.missingEyeMs = 0;
-		this.lastInferenceTime = 0;
+		this.leftEye = newEyeState();
+		this.rightEye = newEyeState();
 		this.lastInferenceTimestamp = 0;
-		this.pendingBlink = false;
-		this.lastResult = {
-			blinkDetected: false,
-			ear: null,
-			leftEar: null,
-			rightEar: null,
-			leftBlinking: false,
-			rightBlinking: false,
-			faceDetected: false,
-			calibrated: false,
-		};
+		this.lastVideoTime = -1;
+		this.lastInferenceTime = 0;
+		this.lastBlinkAt = -Infinity;
+		this.maxBlendSinceFire = 0;
+		this.relaxedSinceFire = true;
+		this.blinkStartedAt = null;
 	}
 
 	dispose(): void {

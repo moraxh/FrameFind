@@ -6,8 +6,8 @@ from pathlib import Path
 
 import torch
 
-from model import GlassesNet
-from preprocess import ROI_SIZE
+from training.glasses.model import GlassesNet
+from training.glasses.preprocess import ROI_SIZE
 
 HERE = Path(__file__).resolve().parent
 
@@ -15,7 +15,7 @@ HERE = Path(__file__).resolve().parent
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", default=str(HERE / "checkpoints" / "best.pt"))
-    ap.add_argument("--out", default=str(HERE.parent / "apps" / "playground" / "model" / "glasses.onnx"))
+    ap.add_argument("--out", default=str(HERE.parent / ".."/ "apps" / "playground" / "model" / "glasses.onnx"))
     ap.add_argument("--opset", type=int, default=12)
     args = ap.parse_args()
 

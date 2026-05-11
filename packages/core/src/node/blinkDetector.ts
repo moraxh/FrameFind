@@ -2,15 +2,22 @@ export type BlinkDetectorNodeOptions = {
 	minFaceDetectionConfidence?: number;
 	minFacePresenceConfidence?: number;
 	minTrackingConfidence?: number;
+	/** Assumed input frame rate. Used to convert ms thresholds → frames. */
+	fps?: number;
 };
 
+export type BlinkEventType = "blink" | "wink-left" | "wink-right";
+
 export type BlinkResult = {
+	event: BlinkEventType | null;
 	blinkDetected: boolean;
+	leftClosed: boolean;
+	rightClosed: boolean;
+	leftScore: number;
+	rightScore: number;
 	ear: number | null;
 	leftEar: number | null;
 	rightEar: number | null;
-	leftBlinking: boolean;
-	rightBlinking: boolean;
 	faceDetected: boolean;
 	calibrated: boolean;
 };
@@ -26,14 +33,24 @@ interface FaceLandmarksDetector {
 	>;
 }
 
-const EAR_SMOOTH_TAU_MS = 70;
-const EAR_BASELINE_TAU_MS = 3000;
 const EAR_ENTER_RATIO = 0.65;
-const EAR_EXIT_RATIO = 0.75;
-const EAR_MIN_LOW_FRAMES = 2;
-const EAR_MIN_DROP = 0.02;
-const BASELINE_WARMUP_FRAMES = 15;
-const EAR_ASYMMETRY_RATIO = 0.45;
+const EAR_EXIT_RATIO = 0.78;
+const BASELINE_WARMUP_MS = 600;
+const BASELINE_TAU_OPEN_MS = 8000;
+const BASELINE_TAU_DROP_MS = 30000;
+const EAR_SMOOTH_TAU_MS_FAST = 10;
+const EAR_SMOOTH_TAU_MS_SLOW = 60;
+
+const CLOSE_SCORE_ENTER = 0.55;
+const CLOSE_SCORE_EXIT = 0.35;
+const MIN_CLOSING_MS = 35;
+const MIN_OPENING_MS = 35;
+
+const BLINK_PAIR_WINDOW_MS = 90;
+const WINK_MIN_DURATION_MS = 90;
+const WINK_MAX_DURATION_MS = 1200;
+const BLINK_MIN_DURATION_MS = 50;
+const BLINK_MAX_DURATION_MS = 600;
 
 const LEFT_EYE = [362, 385, 387, 263, 373, 380];
 const RIGHT_EYE = [33, 160, 158, 133, 153, 144];
@@ -57,49 +74,57 @@ function eyeAspectRatio(
 	return Number.isFinite(ear) ? ear : null;
 }
 
+type EyePhase = "open" | "closing" | "closed" | "opening";
+
 interface EyeState {
 	baseline: number | null;
 	baselineSamples: number[];
-	warmupFrames: number;
+	warmupMs: number;
 	smoothed: number | null;
 	prevSmoothed: number | null;
-	lowFrames: number;
+	velocity: number;
+	closeScore: number;
+	phase: EyePhase;
+	phaseEnteredAtMs: number;
+	closedAtMs: number | null;
+	openedAtMs: number | null;
+	pendingClassify: boolean;
 }
 
 function newEyeState(): EyeState {
 	return {
 		baseline: null,
 		baselineSamples: [],
-		warmupFrames: 0,
+		warmupMs: 0,
 		smoothed: null,
 		prevSmoothed: null,
-		lowFrames: 0,
+		velocity: 0,
+		closeScore: 0,
+		phase: "open",
+		phaseEnteredAtMs: 0,
+		closedAtMs: null,
+		openedAtMs: null,
+		pendingClassify: false,
 	};
 }
 
 export class BlinkDetectorNode {
 	private landmarksDetector: FaceLandmarksDetector | null = null;
 	private opts: Required<BlinkDetectorNodeOptions>;
-	private blinking = false;
 	private leftEye: EyeState = newEyeState();
 	private rightEye: EyeState = newEyeState();
-	private lastResult: BlinkResult = {
-		blinkDetected: false,
-		ear: null,
-		leftEar: null,
-		rightEar: null,
-		leftBlinking: false,
-		rightBlinking: false,
-		faceDetected: false,
-		calibrated: false,
-	};
+	private elapsedMs = 0;
+	private dt_ms: number;
+	private lastResult: BlinkResult = emptyResult();
 
 	constructor(opts: BlinkDetectorNodeOptions = {}) {
 		this.opts = {
 			minFaceDetectionConfidence: opts.minFaceDetectionConfidence ?? 0.5,
 			minFacePresenceConfidence: opts.minFacePresenceConfidence ?? 0.5,
 			minTrackingConfidence: opts.minTrackingConfidence ?? 0.5,
+			fps: opts.fps ?? 30,
 		};
+		this.dt_ms = 1000 / this.opts.fps;
 	}
 
 	async load(): Promise<void> {
@@ -124,11 +149,6 @@ export class BlinkDetectorNode {
 		}
 	}
 
-	/**
-	 * Detect blink from a raw image file path.
-	 * Requires `sharp` installed: npm i sharp
-	 * Designed for video-frame pipelines: call once per frame in sequence.
-	 */
 	async detectFromImagePath(imagePath: string): Promise<BlinkResult> {
 		if (!this.landmarksDetector) throw new Error("Call load() first");
 
@@ -163,11 +183,6 @@ export class BlinkDetectorNode {
 		return this.processLandmarks(faces.length ? faces[0].keypoints : null);
 	}
 
-	/**
-	 * Detect blink from a pre-decoded RGBA pixel buffer.
-	 * pixels: Uint8Array or Uint8ClampedArray of RGBA pixels (width × height × 4).
-	 * Designed for video-frame pipelines: call once per frame in sequence.
-	 */
 	async detectFromRgbaBuffer(
 		pixels: Uint8ClampedArray | Uint8Array,
 		width: number,
@@ -190,10 +205,16 @@ export class BlinkDetectorNode {
 	private processLandmarks(
 		landmarks: Array<{ x: number; y: number; z?: number }> | null,
 	): BlinkResult {
+		this.elapsedMs += this.dt_ms;
+		const now = this.elapsedMs;
+
 		if (!landmarks) {
 			this.lastResult = {
-				...this.lastResult,
-				blinkDetected: false,
+				...emptyResult(),
+				calibrated: this.calibrated,
+				ear: this.smoothedEar,
+				leftEar: this.leftEye.smoothed,
+				rightEar: this.rightEye.smoothed,
 				faceDetected: false,
 			};
 			return this.lastResult;
@@ -202,160 +223,234 @@ export class BlinkDetectorNode {
 		const leftEAR = eyeAspectRatio(landmarks as Point2D[], LEFT_EYE);
 		const rightEAR = eyeAspectRatio(landmarks as Point2D[], RIGHT_EYE);
 
-		if (leftEAR === null || rightEAR === null) {
-			this.lastResult = {
-				...this.lastResult,
-				blinkDetected: false,
-				faceDetected: true,
-			};
-			return this.lastResult;
-		}
+		if (leftEAR !== null)
+			this.updateSmooth(this.leftEye, leftEAR, this.dt_ms, now);
+		if (rightEAR !== null)
+			this.updateSmooth(this.rightEye, rightEAR, this.dt_ms, now);
 
-		this.updateEyeSmooth(this.leftEye, leftEAR);
-		this.updateEyeSmooth(this.rightEye, rightEAR);
+		this.leftEye.closeScore = this.computeCloseScore(this.leftEye);
+		this.rightEye.closeScore = this.computeCloseScore(this.rightEye);
 
-		const leftSmoothed = this.leftEye.smoothed ?? leftEAR;
-		const rightSmoothed = this.rightEye.smoothed ?? rightEAR;
-		const avgEar = (leftSmoothed + rightSmoothed) / 2;
+		this.transitionEye(this.leftEye, now);
+		this.transitionEye(this.rightEye, now);
 
-		const leftBlinking = this.isEyeBlinking(this.leftEye);
-		const rightBlinking = this.isEyeBlinking(this.rightEye);
+		const event = this.calibrated ? this.classifyEvent(now) : null;
 
-		const makeResult = (blinkDetected: boolean): BlinkResult => ({
-			blinkDetected,
-			ear: avgEar,
+		this.lastResult = {
+			event,
+			blinkDetected: event !== null,
+			leftClosed:
+				this.leftEye.phase === "closed" || this.leftEye.phase === "opening",
+			rightClosed:
+				this.rightEye.phase === "closed" || this.rightEye.phase === "opening",
+			leftScore: this.leftEye.closeScore,
+			rightScore: this.rightEye.closeScore,
+			ear: this.smoothedEar,
 			leftEar: this.leftEye.smoothed,
 			rightEar: this.rightEye.smoothed,
-			leftBlinking,
-			rightBlinking,
 			faceDetected: true,
 			calibrated: this.calibrated,
-		});
-
-		if (!this.calibrated) {
-			this.lastResult = makeResult(false);
-			return this.lastResult;
-		}
-
-		// Asymmetry wink fast-path
-		const maxEAR = Math.max(leftEAR, rightEAR);
-		const minEAR = Math.min(leftEAR, rightEAR);
-		if (maxEAR > 0 && minEAR / maxEAR < EAR_ASYMMETRY_RATIO) {
-			if (!this.blinking) {
-				const eye = leftEAR < rightEAR ? this.leftEye : this.rightEye;
-				eye.lowFrames += 1;
-				if (eye.lowFrames >= EAR_MIN_LOW_FRAMES) {
-					this.blinking = true;
-					this.lastResult = makeResult(true);
-					return this.lastResult;
-				}
-			}
-			this.lastResult = makeResult(false);
-			return this.lastResult;
-		}
-
-		if (!this.blinking) {
-			const leftFire = this.eyeBlinkEntry(this.leftEye);
-			const rightFire = this.eyeBlinkEntry(this.rightEye);
-			if (leftFire || rightFire) {
-				this.blinking = true;
-				this.lastResult = makeResult(true);
-				return this.lastResult;
-			}
-		} else if (this.bothEyesOpen()) {
-			this.blinking = false;
-			this.leftEye.lowFrames = 0;
-			this.rightEye.lowFrames = 0;
-			this.leftEye.prevSmoothed = null;
-			this.rightEye.prevSmoothed = null;
-		}
-
-		this.lastResult = makeResult(false);
+		};
 		return this.lastResult;
 	}
 
-	private updateEyeSmooth(eye: EyeState, raw: number): void {
+	private updateSmooth(eye: EyeState, raw: number, dt_ms: number, now: number) {
 		eye.prevSmoothed = eye.smoothed;
-		const a = 1 - Math.exp(-33 / EAR_SMOOTH_TAU_MS); // assume ~30fps
+		const closing = eye.smoothed !== null && raw < eye.smoothed;
+		const tau = closing ? EAR_SMOOTH_TAU_MS_FAST : EAR_SMOOTH_TAU_MS_SLOW;
+		const a = 1 - Math.exp(-dt_ms / tau);
+		const prev = eye.smoothed;
 		eye.smoothed =
 			eye.smoothed === null ? raw : eye.smoothed * (1 - a) + raw * a;
+		eye.velocity = prev !== null ? (prev - eye.smoothed) / dt_ms : 0;
 
 		if (eye.baseline === null) {
-			eye.warmupFrames += 1;
+			eye.warmupMs += dt_ms;
 			eye.baselineSamples.push(raw);
-			if (eye.warmupFrames >= BASELINE_WARMUP_FRAMES) {
+			if (eye.warmupMs >= BASELINE_WARMUP_MS && eye.baselineSamples.length > 0) {
 				const sorted = [...eye.baselineSamples].sort((a, b) => a - b);
-				eye.baseline = sorted[Math.floor(sorted.length / 2)];
+				eye.baseline = sorted[Math.floor(sorted.length * 0.6)];
 				eye.baselineSamples = [];
 			}
-		} else if (
-			!this.blinking &&
-			eye.smoothed !== null &&
-			eye.smoothed >= eye.baseline
-		) {
-			const ba = 1 - Math.exp(-33 / EAR_BASELINE_TAU_MS);
+			return;
+		}
+
+		if (eye.phase === "open" && eye.smoothed !== null) {
+			const tau =
+				eye.smoothed >= eye.baseline
+					? BASELINE_TAU_OPEN_MS
+					: BASELINE_TAU_DROP_MS;
+			const ba = 1 - Math.exp(-dt_ms / tau);
 			eye.baseline = eye.baseline * (1 - ba) + eye.smoothed * ba;
 		}
 	}
 
-	private eyeBlinkEntry(eye: EyeState): boolean {
-		if (eye.baseline === null || eye.smoothed === null) return false;
-		const enter = eye.baseline * EAR_ENTER_RATIO;
-		if (eye.smoothed >= enter) {
-			eye.lowFrames = 0;
-			return false;
-		}
-		const drop =
-			eye.prevSmoothed !== null ? eye.prevSmoothed - eye.smoothed : 0;
-		const fastEnough = drop >= EAR_MIN_DROP || eye.lowFrames > 0;
-		if (!fastEnough) {
-			eye.lowFrames = 0;
-			return false;
-		}
-		eye.lowFrames += 1;
-		return eye.lowFrames >= EAR_MIN_LOW_FRAMES;
+	private computeCloseScore(eye: EyeState): number {
+		if (eye.baseline === null || eye.smoothed === null) return 0;
+		const earNormalized = clamp01(
+			(eye.baseline - eye.smoothed) / (eye.baseline * (1 - EAR_ENTER_RATIO)),
+		);
+		const earPart = clamp01(
+			(1 - eye.smoothed / (eye.baseline * EAR_ENTER_RATIO)) * 0.5 + 0.5,
+		);
+		const velocityBoost = clamp01(eye.velocity * 20);
+		return Math.max(earNormalized, earPart) * (1 + 0.2 * velocityBoost);
 	}
 
-	private bothEyesOpen(): boolean {
+	private transitionEye(eye: EyeState, now: number) {
+		const enter = eye.closeScore >= CLOSE_SCORE_ENTER;
+		const exit = eye.closeScore <= CLOSE_SCORE_EXIT;
+		const dur = now - eye.phaseEnteredAtMs;
+
+		switch (eye.phase) {
+			case "open":
+				if (enter) this.setPhase(eye, "closing", now);
+				break;
+			case "closing":
+				if (exit) this.setPhase(eye, "open", now);
+				else if (dur >= MIN_CLOSING_MS && enter) {
+					this.setPhase(eye, "closed", now);
+					eye.closedAtMs = now;
+				}
+				break;
+			case "closed":
+				if (exit) this.setPhase(eye, "opening", now);
+				break;
+			case "opening":
+				if (enter) this.setPhase(eye, "closed", now);
+				else if (dur >= MIN_OPENING_MS && exit) {
+					this.setPhase(eye, "open", now);
+					eye.openedAtMs = now;
+					eye.pendingClassify = true;
+				}
+				break;
+		}
+	}
+
+	private setPhase(eye: EyeState, phase: EyePhase, now: number) {
+		eye.phase = phase;
+		eye.phaseEnteredAtMs = now;
+	}
+
+	private classifyEvent(now: number): BlinkEventType | null {
 		const l = this.leftEye;
 		const r = this.rightEye;
-		if (l.baseline === null || l.smoothed === null) return true;
-		if (r.baseline === null || r.smoothed === null) return true;
-		return (
-			l.smoothed >= l.baseline * EAR_EXIT_RATIO &&
-			r.smoothed >= r.baseline * EAR_EXIT_RATIO
-		);
-	}
 
-	private isEyeBlinking(eye: EyeState): boolean {
-		if (eye.baseline === null || eye.smoothed === null) return false;
-		return eye.smoothed < eye.baseline * EAR_ENTER_RATIO;
+		if (!l.pendingClassify && !r.pendingClassify) return null;
+
+		if (
+			l.pendingClassify &&
+			r.pendingClassify &&
+			l.closedAtMs !== null &&
+			r.closedAtMs !== null &&
+			l.openedAtMs !== null &&
+			r.openedAtMs !== null
+		) {
+			const closeGap = Math.abs(l.closedAtMs - r.closedAtMs);
+			const openGap = Math.abs(l.openedAtMs - r.openedAtMs);
+			const lDur = l.openedAtMs - l.closedAtMs;
+			const rDur = r.openedAtMs - r.closedAtMs;
+			if (
+				closeGap <= BLINK_PAIR_WINDOW_MS &&
+				openGap <= BLINK_PAIR_WINDOW_MS &&
+				lDur >= BLINK_MIN_DURATION_MS &&
+				rDur >= BLINK_MIN_DURATION_MS &&
+				lDur <= BLINK_MAX_DURATION_MS &&
+				rDur <= BLINK_MAX_DURATION_MS
+			) {
+				l.pendingClassify = false;
+				r.pendingClassify = false;
+				return "blink";
+			}
+		}
+
+		const tryWink = (
+			self: EyeState,
+			other: EyeState,
+			label: "wink-left" | "wink-right",
+		): BlinkEventType | null => {
+			if (!self.pendingClassify) return null;
+			if (self.closedAtMs === null || self.openedAtMs === null) return null;
+			const dur = self.openedAtMs - self.closedAtMs;
+			if (dur < WINK_MIN_DURATION_MS || dur > WINK_MAX_DURATION_MS)
+				return null;
+			if (
+				other.closedAtMs !== null &&
+				other.closedAtMs >= self.closedAtMs - BLINK_PAIR_WINDOW_MS &&
+				other.closedAtMs <= self.openedAtMs + BLINK_PAIR_WINDOW_MS
+			) {
+				return null;
+			}
+			self.pendingClassify = false;
+			return label;
+		};
+
+		const leftWink = tryWink(l, r, "wink-left");
+		if (leftWink) return leftWink;
+		const rightWink = tryWink(r, l, "wink-right");
+		if (rightWink) return rightWink;
+
+		const STALE_MS = WINK_MAX_DURATION_MS + BLINK_PAIR_WINDOW_MS;
+		if (
+			l.pendingClassify &&
+			l.openedAtMs !== null &&
+			now - l.openedAtMs > STALE_MS
+		)
+			l.pendingClassify = false;
+		if (
+			r.pendingClassify &&
+			r.openedAtMs !== null &&
+			now - r.openedAtMs > STALE_MS
+		)
+			r.pendingClassify = false;
+
+		return null;
 	}
 
 	get calibrated(): boolean {
 		return this.leftEye.baseline !== null && this.rightEye.baseline !== null;
 	}
 
+	get smoothedEar(): number | null {
+		const l = this.leftEye.smoothed;
+		const r = this.rightEye.smoothed;
+		if (l === null && r === null) return null;
+		if (l === null) return r;
+		if (r === null) return l;
+		return (l + r) / 2;
+	}
+
 	resetHistory(): void {
-		this.blinking = false;
 		this.leftEye = newEyeState();
 		this.rightEye = newEyeState();
-		this.lastResult = {
-			blinkDetected: false,
-			ear: null,
-			leftEar: null,
-			rightEar: null,
-			leftBlinking: false,
-			rightBlinking: false,
-			faceDetected: false,
-			calibrated: false,
-		};
+		this.elapsedMs = 0;
+		this.lastResult = emptyResult();
 	}
 
 	dispose(): void {
 		this.landmarksDetector = null;
 		this.resetHistory();
 	}
+}
+
+function clamp01(v: number): number {
+	return Math.max(0, Math.min(1, v));
+}
+
+function emptyResult(): BlinkResult {
+	return {
+		event: null,
+		blinkDetected: false,
+		leftClosed: false,
+		rightClosed: false,
+		leftScore: 0,
+		rightScore: 0,
+		ear: null,
+		leftEar: null,
+		rightEar: null,
+		faceDetected: false,
+		calibrated: false,
+	};
 }
 
 function rgbaToRgb(
