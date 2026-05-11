@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@framefind/react':
-        specifier: ^0.3.4
-        version: 0.3.4(onnxruntime-web@1.26.0)(react@19.2.4)
+        specifier: ^0.3.5
+        version: 0.3.5(onnxruntime-web@1.26.0)(react@19.2.4)
       '@tailwindcss/typography':
         specifier: ^0.5.19
         version: 0.5.19(tailwindcss@4.2.4)
@@ -47,9 +47,6 @@ importers:
       react-dom:
         specifier: 19.2.4
         version: 19.2.4(react@19.2.4)
-      scroll-into-view-if-needed:
-        specifier: ^3.1.0
-        version: 3.1.0
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
@@ -84,9 +81,6 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
-      vite:
-        specifier: ^8.0.11
-        version: 8.0.11(@types/node@20.19.40)(esbuild@0.28.0)(jiti@2.7.0)
 
 packages:
 
@@ -346,8 +340,8 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
-  '@framefind/core@0.3.2':
-    resolution: {integrity: sha512-iMXoU1BwGbh435jsJ2scGJzwsFiA5ahd2oheAZ6FhdOX6NUJI3B2aTefRtCCa4azOF8D4LxSbv42ra5O/6u9cA==}
+  '@framefind/core@0.3.3':
+    resolution: {integrity: sha512-z9hv42OTxZDC0E799l0LC8XVX9D9qiujotNlkB7BsHDxwLeTPA9hcri2mjeyd5dAid+yrUtXoHN/f3019UshUw==}
     peerDependencies:
       '@tensorflow-models/face-landmarks-detection': '>=1.0.0'
       '@tensorflow/tfjs-node': '>=4.0.0'
@@ -363,8 +357,8 @@ packages:
       onnxruntime-web:
         optional: true
 
-  '@framefind/react@0.3.4':
-    resolution: {integrity: sha512-EyIrl2quanSFfgwdcpP4b7LThcyQbTPYDyAEzHG1PAH2hBPSreVSCrrKtsxza4F1vxeV+R9XOsdTiIFO9Av5lg==}
+  '@framefind/react@0.3.5':
+    resolution: {integrity: sha512-dbM44syvKDvvW4gTRxzebHxVGMEZt+y+8sWV77WkQItvefiZ3uNLnxTxd/vV3UOsB0XUTmQTijaSa/5mwmURsw==}
     peerDependencies:
       onnxruntime-web: '>=1.25.1'
       react: '>=18.0.0'
@@ -554,9 +548,6 @@ packages:
 
   '@mdx-js/mdx@3.1.1':
     resolution: {integrity: sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ==}
-
-  '@mediapipe/tasks-vision@0.10.35':
-    resolution: {integrity: sha512-HOvadwVRE6JC+45nyYhmnywnr5h/J8KZvOeUNVOG9q/0875pZgItznFB9bRTvLc264YSJqiZ1NsIpCStJw/egg==}
 
   '@napi-rs/wasm-runtime@1.1.4':
     resolution: {integrity: sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow==}
@@ -2513,16 +2504,15 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@framefind/core@0.3.2(onnxruntime-web@1.26.0)':
+  '@framefind/core@0.3.3(onnxruntime-web@1.26.0)':
     dependencies:
       '@framefind/utils': 0.2.1
-      '@mediapipe/tasks-vision': 0.10.35
     optionalDependencies:
       onnxruntime-web: 1.26.0
 
-  '@framefind/react@0.3.4(onnxruntime-web@1.26.0)(react@19.2.4)':
+  '@framefind/react@0.3.5(onnxruntime-web@1.26.0)(react@19.2.4)':
     dependencies:
-      '@framefind/core': 0.3.2(onnxruntime-web@1.26.0)
+      '@framefind/core': 0.3.3(onnxruntime-web@1.26.0)
       '@framefind/utils': 0.2.1
       onnxruntime-web: 1.26.0
       react: 19.2.4
@@ -2684,8 +2674,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mediapipe/tasks-vision@0.10.35': {}
-
   '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
     dependencies:
       '@emnapi/core': 1.10.0
@@ -2721,7 +2709,8 @@ snapshots:
 
   '@orama/orama@3.1.18': {}
 
-  '@oxc-project/types@0.128.0': {}
+  '@oxc-project/types@0.128.0':
+    optional: true
 
   '@protobufjs/aspromise@1.1.2': {}
 
@@ -3151,7 +3140,8 @@ snapshots:
   '@rolldown/binding-win32-x64-msvc@1.0.0-rc.18':
     optional: true
 
-  '@rolldown/pluginutils@1.0.0-rc.18': {}
+  '@rolldown/pluginutils@1.0.0-rc.18':
+    optional: true
 
   '@shikijs/core@4.0.2':
     dependencies:
@@ -4534,6 +4524,7 @@ snapshots:
       '@rolldown/binding-wasm32-wasi': 1.0.0-rc.18
       '@rolldown/binding-win32-arm64-msvc': 1.0.0-rc.18
       '@rolldown/binding-win32-x64-msvc': 1.0.0-rc.18
+    optional: true
 
   scheduler@0.27.0: {}
 
@@ -4722,6 +4713,7 @@ snapshots:
       esbuild: 0.28.0
       fsevents: 2.3.3
       jiti: 2.7.0
+    optional: true
 
   web-namespaces@2.0.1: {}
 

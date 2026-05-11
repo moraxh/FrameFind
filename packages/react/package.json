@@ -1,6 +1,6 @@
 {
   "name": "@framefind/react",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "React hooks for FrameFind glasses detection",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,7 +25,7 @@
     "url": "https://github.com/moraxh/FrameFind"
   },
   "dependencies": {
-    "@framefind/core": "^0.3.2",
+    "@framefind/core": "^0.3.3",
     "@framefind/utils": "0.2.1"
   },
   "peerDependencies": {

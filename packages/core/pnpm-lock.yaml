@@ -11,10 +11,10 @@ importers:
       '@framefind/utils':
         specifier: 0.2.1
         version: 0.2.1
-      '@mediapipe/tasks-vision':
-        specifier: ^0.10.0
-        version: 0.10.35
     devDependencies:
+      '@mediapipe/tasks-vision':
+        specifier: ^0.10.35
+        version: 0.10.35
       '@tensorflow-models/face-landmarks-detection':
         specifier: ^1.0.6
         version: 1.0.6(@mediapipe/face_mesh@0.4.1633559619)(@tensorflow-models/face-detection@1.0.3(@mediapipe/face_detection@0.4.1646425229)(@tensorflow/tfjs-backend-webgl@4.22.0(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-converter@4.22.0(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-backend-webgl@4.22.0(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-converter@4.22.0(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-core@4.22.0)
