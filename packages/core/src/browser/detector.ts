@@ -391,15 +391,12 @@ async function silenceMediapipeInfo<T>(fn: () => Promise<T>): Promise<T> {
 		};
 	const origInfo = console.info;
 	const origLog = console.log;
-	const origError = console.error;
 	console.info = filter(origInfo).bind(console);
 	console.log = filter(origLog).bind(console);
-	console.error = filter(origError).bind(console);
 	try {
 		return await fn();
 	} finally {
 		console.info = origInfo;
 		console.log = origLog;
-		console.error = origError;
 	}
 }

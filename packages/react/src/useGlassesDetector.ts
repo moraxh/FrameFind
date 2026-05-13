@@ -73,6 +73,7 @@ export function useGlassesDetector(
 	const videoRef = externalVideoRef ?? internalVideoRef;
 
 	const detectorRef = useRef<GlassesDetector | null>(null);
+	const isLoadedRef = useRef(false);
 
 	const offscreenRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -106,6 +107,7 @@ export function useGlassesDetector(
 		});
 
 		detectorRef.current = detector;
+		isLoadedRef.current = false;
 
 		setLoading(true);
 		setError(null);
@@ -113,6 +115,7 @@ export function useGlassesDetector(
 		detector
 			.load()
 			.then(() => {
+				isLoadedRef.current = true;
 				setLoading(false);
 			})
 			.catch((e) => {
@@ -125,6 +128,7 @@ export function useGlassesDetector(
 			detector.dispose();
 
 			detectorRef.current = null;
+			isLoadedRef.current = false;
 		};
 	}, [
 		enabled,
@@ -149,13 +153,15 @@ export function useGlassesDetector(
 		};
 	}, []);
 
+	const resultRef = useRef<DetectionResult | null>(null);
+
 	const detect = useCallback(
 		async (video: HTMLVideoElement) => {
 			const detector = detectorRef.current;
 
 			const offscreen = offscreenRef.current;
 
-			if (!detector || !offscreen) return;
+			if (!detector || !isLoadedRef.current || !offscreen) return;
 
 			const t0 = performance.now();
 
@@ -166,17 +172,24 @@ export function useGlassesDetector(
 			const now = performance.now();
 
 			if (now - lastUiUpdateRef.current >= uiUpdateIntervalMs) {
-				setResult(detection);
-
-				setInferenceTime(elapsed);
-
+				const prev = resultRef.current;
+				const changed =
+					prev === null ||
+					prev.glasses !== detection.glasses ||
+					prev.probability !== detection.probability ||
+					prev.faceDetected !== detection.faceDetected;
+				if (changed) {
+					resultRef.current = detection;
+					setResult(detection);
+					setInferenceTime(elapsed);
+				}
 				lastUiUpdateRef.current = now;
 			}
 		},
 		[uiUpdateIntervalMs],
 	);
 
-	useVideoFrameDetect(videoRef.current, detect, {
+	useVideoFrameDetect(videoRef, detect, {
 		enabled: enabled && !loading,
 		paused: isPaused,
 	});

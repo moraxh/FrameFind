@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 
 type VideoElWithRVFC = HTMLVideoElement & {
 	requestVideoFrameCallback?: (
@@ -37,7 +37,7 @@ export type UseVideoFrameDetectOptions = {
  * - handles cleanup safely
  */
 export function useVideoFrameDetect(
-	video: HTMLVideoElement | null,
+	videoRef: RefObject<HTMLVideoElement | null> | HTMLVideoElement | null,
 	callback: (video: HTMLVideoElement) => void | Promise<void>,
 	opts: UseVideoFrameDetectOptions = {},
 ): void {
@@ -51,7 +51,15 @@ export function useVideoFrameDetect(
 
 	const lastVideoTimeRef = useRef<number | null>(null);
 
+	const videoRefObj = useRef(videoRef);
+	videoRefObj.current = videoRef;
+
 	useEffect(() => {
+		const video =
+			videoRefObj.current instanceof HTMLVideoElement || videoRefObj.current === null
+				? videoRefObj.current
+				: videoRefObj.current.current;
+
 		if (!video) return;
 
 		if (!enabled) return;
@@ -142,5 +150,5 @@ export function useVideoFrameDetect(
 				cancelAnimationFrame(rafHandle);
 			}
 		};
-	}, [video, enabled, paused, skipDuplicateFrames]);
+	}, [enabled, paused, skipDuplicateFrames]);
 }

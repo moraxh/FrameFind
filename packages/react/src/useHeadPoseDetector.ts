@@ -94,6 +94,7 @@ export function useHeadPoseDetector(
 	const videoRef = externalVideoRef ?? internalVideoRef;
 
 	const detectorRef = useRef<AnyDetector | null>(null);
+	const isLoadedRef = useRef(false);
 
 	const lastUiUpdateRef = useRef(0);
 
@@ -130,6 +131,7 @@ export function useHeadPoseDetector(
 			: new HeadPoseDetector(ctorOpts);
 
 		detectorRef.current = detector;
+		isLoadedRef.current = false;
 
 		setLoading(true);
 
@@ -138,6 +140,7 @@ export function useHeadPoseDetector(
 		detector
 			.load()
 			.then(() => {
+				isLoadedRef.current = true;
 				setLoading(false);
 			})
 			.catch((e) => {
@@ -150,6 +153,7 @@ export function useHeadPoseDetector(
 			detector.dispose();
 
 			detectorRef.current = null;
+			isLoadedRef.current = false;
 		};
 	}, [
 		alpha,
@@ -165,11 +169,13 @@ export function useHeadPoseDetector(
 		enabled,
 	]);
 
+	const resultRef = useRef<HeadPoseResult | null>(null);
+
 	const detect = useCallback(
 		async (video: HTMLVideoElement) => {
 			const detector = detectorRef.current;
 
-			if (!detector) return;
+			if (!detector || !isLoadedRef.current) return;
 
 			const t0 = performance.now();
 
@@ -180,17 +186,25 @@ export function useHeadPoseDetector(
 			const now = performance.now();
 
 			if (now - lastUiUpdateRef.current >= uiUpdateIntervalMs) {
-				setResult(detection);
-
-				setInferenceTime(elapsed);
-
+				const prev = resultRef.current;
+				const changed =
+					prev === null ||
+					prev.yaw !== detection.yaw ||
+					prev.pitch !== detection.pitch ||
+					prev.roll !== detection.roll ||
+					prev.faceDetected !== detection.faceDetected;
+				if (changed) {
+					resultRef.current = detection;
+					setResult(detection);
+					setInferenceTime(elapsed);
+				}
 				lastUiUpdateRef.current = now;
 			}
 		},
 		[uiUpdateIntervalMs],
 	);
 
-	useVideoFrameDetect(videoRef.current, detect, {
+	useVideoFrameDetect(videoRef, detect, {
 		enabled: enabled && !loading,
 		paused: isPaused,
 	});

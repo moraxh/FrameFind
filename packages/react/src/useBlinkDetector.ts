@@ -107,6 +107,7 @@ export function useBlinkDetector(
   const videoRef = externalVideoRef ?? internalVideoRef;
 
   const detectorRef = useRef<BlinkDetector | null>(null);
+  const isLoadedRef = useRef(false);
   const lastUiUpdateRef = useRef(0);
 
   const onBlinkRef = useRef(onBlink);
@@ -150,12 +151,16 @@ export function useBlinkDetector(
     });
 
     detectorRef.current = detector;
+    isLoadedRef.current = false;
     setLoading(true);
     setError(null);
 
     detector
       .load()
-      .then(() => setLoading(false))
+      .then(() => {
+        isLoadedRef.current = true;
+        setLoading(false);
+      })
       .catch((e) => {
         setError(e instanceof Error ? e : new Error(String(e)));
         setLoading(false);
@@ -164,6 +169,7 @@ export function useBlinkDetector(
     return () => {
       detector.dispose();
       detectorRef.current = null;
+      isLoadedRef.current = false;
     };
   }, [
     enabled,
@@ -175,10 +181,12 @@ export function useBlinkDetector(
     minTrackingConfidence,
   ]);
 
+  const resultRef = useRef<BlinkStateResult>(EMPTY_STATE);
+
   const detect = useCallback(
     (video: HTMLVideoElement) => {
       const detector = detectorRef.current;
-      if (!detector) return;
+      if (!detector || !isLoadedRef.current) return;
 
       const t0 = performance.now();
       detector.processFrame(video);
@@ -187,23 +195,34 @@ export function useBlinkDetector(
 
       if (now - lastUiUpdateRef.current >= uiUpdateIntervalMs) {
         const lm = latestLandmarksRef.current;
-        setResult({
-          faceDetected: lm !== null,
-          isBlinking: detector.isBlinking,
-          blinkDurationMs: detector.blinkDurationMs,
-          ear: latestEarRef.current,
-          baselineEar: detector.baselineEarValue,
-          smoothedEar: detector.smoothedEarValue,
-          landmarks: lm,
-        });
-        setInferenceTime(elapsed);
+        const faceDetected = lm !== null;
+        const isBlinking = detector.isBlinking;
+        const blinkDurationMs = detector.blinkDurationMs;
+        const ear = latestEarRef.current;
+        const baselineEar = detector.baselineEarValue;
+        const smoothedEar = detector.smoothedEarValue;
+        const prev = resultRef.current;
+        const changed =
+          prev.faceDetected !== faceDetected ||
+          prev.isBlinking !== isBlinking ||
+          prev.blinkDurationMs !== blinkDurationMs ||
+          prev.ear !== ear ||
+          prev.baselineEar !== baselineEar ||
+          prev.smoothedEar !== smoothedEar ||
+          prev.landmarks !== lm;
+        if (changed) {
+          const next = { faceDetected, isBlinking, blinkDurationMs, ear, baselineEar, smoothedEar, landmarks: lm };
+          resultRef.current = next;
+          setResult(next);
+          setInferenceTime(elapsed);
+        }
         lastUiUpdateRef.current = now;
       }
     },
     [uiUpdateIntervalMs],
   );
 
-  useVideoFrameDetect(videoRef.current, detect, {
+  useVideoFrameDetect(videoRef, detect, {
     enabled: enabled && !loading,
     paused: isPaused,
   });
