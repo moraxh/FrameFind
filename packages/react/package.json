@@ -1,6 +1,6 @@
 {
   "name": "@framefind/react",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "description": "React hooks for FrameFind glasses detection",
   "type": "module",
   "main": "./dist/index.js",

@@ -128,7 +128,7 @@ export class HeadPoseDetector {
 	}
 
 	detectFromVideo(video: HTMLVideoElement): HeadPoseResult {
-		if (!this.faceLandmarker) throw new Error("Call load() first");
+		if (!this.faceLandmarker) return this.lastResult;
 		if (video.readyState < 2 || video.videoWidth === 0) {
 			this.lastResult = { ...this.lastResult, faceDetected: false };
 			return this.lastResult;
