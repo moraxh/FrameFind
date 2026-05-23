@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FrameFind Playground Mask Detection</title>
+    <style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #111;
+    color: #eee;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 24px;
+    padding: 24px;
+  }
+
+  h1 { font-size: 20px; font-weight: 600; color: #fff; }
+
+  #status {
+    font-size: 13px;
+    color: #888;
+  }
+
+  .video-container {
+    position: relative;
+    width: 480px;
+    max-width: 100%;
+    aspect-ratio: 4/3;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  #badge {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 28px;
+    border-radius: 100px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    display: none;
+    white-space: nowrap;
+  }
+
+  #badge.with     { background: rgba(80,220,100,0.92); color: #000; }
+  #badge.without  { background: rgba(255,80,80,0.92);  color: #fff; }
+  #badge.incorrect{ background: rgba(255,165,0,0.92);  color: #000; }
+  #badge.noface   { background: rgba(180,180,0,0.92);  color: #000; }
+
+  #conf {
+    font-size: 14px;
+    color: #aaa;
+    min-height: 20px;
+  }
+
+  button {
+    padding: 12px 36px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #fff;
+    color: #111;
+    transition: opacity 0.15s;
+  }
+
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  button:not(:disabled):hover { opacity: 0.85; }
+
+  #btnStart.running { background: #ff5555; color: #fff; }
+</style>
+  </head>
+  <body>
+
+    <h1>FrameFind — Mask Detector</h1>
+    <div id="status">Loading models…</div>
+
+    <div class="video-container">
+      <video id="video" autoplay muted playsinline></video>
+      <div id="badge">—</div>
+    </div>
+
+    <div id="conf"></div>
+    <button id="btnStart" disabled>Start camera</button>
+
+    <canvas id="offscreen" style="display:none"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js"></script>
+    <script type="module">
+const { FaceLandmarker, FilesetResolver } =
+  await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+
+const ROI_SIZE = 112;
+const MEAN = [0.485, 0.456, 0.406];
+const STD  = [0.229, 0.224, 0.225];
+const CLASS_NAMES = ['with_mask', 'without_mask', 'incorrect_mask'];
+const BADGE_CLASS = ['with', 'without', 'incorrect'];
+const BADGE_LABEL = ['😷 Mask', '🙂 No mask', '⚠️ Incorrect'];
+
+const PAD = 0.20;
+const PAD_TOP_MUL = 0.65;
+const PAD_BOTTOM_MUL = 1.70;
+
+const video     = document.getElementById('video');
+const badge     = document.getElementById('badge');
+const conf      = document.getElementById('conf');
+const statusEl  = document.getElementById('status');
+const btnStart  = document.getElementById('btnStart');
+const offscreen = document.getElementById('offscreen');
+const offCtx    = offscreen.getContext('2d', { willReadFrequently: true });
+
+let onnxSession    = null;
+let faceLandmarker = null;
+let stream         = null;
+let running        = false;
+
+ort.env.wasm.wasmPaths  = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+ort.env.wasm.numThreads = 1;
+
+async function init() {
+  try {
+    statusEl.textContent = 'Loading face landmark model…';
+    const filesetResolver = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+    );
+    faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+        delegate: 'GPU',
+      },
+      runningMode: 'VIDEO',
+      numFaces: 1,
+      minFaceDetectionConfidence: 0.3,
+      minFacePresenceConfidence: 0.3,
+    });
+
+    statusEl.textContent = 'Loading mask model…';
+    onnxSession = await ort.InferenceSession.create('./model/mask.onnx', {
+      executionProviders: ['wasm'],
+    });
+
+    statusEl.textContent = 'Models ready';
+    btnStart.disabled = false;
+  } catch(e) {
+    statusEl.textContent = 'Load error: ' + e.message;
+    console.error(e);
+  }
+}
+
+function faceBBox(landmarks, vw, vh) {
+  let xMin = 1, yMin = 1, xMax = 0, yMax = 0;
+  for (const lm of landmarks) {
+    if (lm.x < xMin) xMin = lm.x;
+    if (lm.y < yMin) yMin = lm.y;
+    if (lm.x > xMax) xMax = lm.x;
+    if (lm.y > yMax) yMax = lm.y;
+  }
+  const x0r = xMin * vw, x1r = xMax * vw;
+  const y0r = yMin * vh, y1r = yMax * vh;
+  const bw = x1r - x0r, bh = y1r - y0r;
+  const padX = bw * PAD;
+  const padTop = bh * PAD * PAD_TOP_MUL;
+  const padBot = bh * PAD * PAD_BOTTOM_MUL;
+  const x0 = Math.max(0, x0r - padX);
+  const y0 = Math.max(0, y0r - padTop);
+  const x1 = Math.min(vw, x1r + padX);
+  const y1 = Math.min(vh, y1r + padBot);
+  if (x1 <= x0 || y1 <= y0) return null;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+function preprocessROI(roi) {
+  offscreen.width = offscreen.height = ROI_SIZE;
+  offCtx.drawImage(video, roi.x, roi.y, roi.w, roi.h, 0, 0, ROI_SIZE, ROI_SIZE);
+  const px = offCtx.getImageData(0, 0, ROI_SIZE, ROI_SIZE).data;
+  const t = new Float32Array(3 * ROI_SIZE * ROI_SIZE);
+  for (let i = 0; i < ROI_SIZE * ROI_SIZE; i++) {
+    t[i]                       = (px[i*4]   / 255 - MEAN[0]) / STD[0];
+    t[ROI_SIZE*ROI_SIZE + i]   = (px[i*4+1] / 255 - MEAN[1]) / STD[1];
+    t[2*ROI_SIZE*ROI_SIZE + i] = (px[i*4+2] / 255 - MEAN[2]) / STD[2];
+  }
+  return t;
+}
+
+function softmax(arr) {
+  const m = Math.max(...arr);
+  const exps = arr.map(v => Math.exp(v - m));
+  const s = exps.reduce((a, b) => a + b, 0);
+  return exps.map(v => v / s);
+}
+
+const SMOOTH_N      = 8;
+const NO_FACE_GRACE = 6;
+const probHistory   = [];
+let noFaceFrames    = 0;
+
+let lastVideoTime = -1;
+
+async function loop() {
+  if (!running || !onnxSession) return;
+
+  let tensor = null;
+  let faceFound = false;
+
+  if (faceLandmarker && video.currentTime !== lastVideoTime) {
+    lastVideoTime = video.currentTime;
+    const result = faceLandmarker.detectForVideo(video, performance.now());
+    if (result.faceLandmarks && result.faceLandmarks.length > 0) {
+      faceFound = true;
+      noFaceFrames = 0;
+      const vw = video.videoWidth, vh = video.videoHeight;
+      const roi = faceBBox(result.faceLandmarks[0], vw, vh);
+      if (roi) tensor = preprocessROI(roi);
+    } else {
+      noFaceFrames++;
+    }
+  }
+
+  if (faceFound && tensor) {
+    const input = new ort.Tensor('float32', tensor, [1, 3, ROI_SIZE, ROI_SIZE]);
+    const out   = await onnxSession.run({ input });
+    const outKey = Object.keys(out)[0];
+    const logits = Array.from(out[outKey].data);
+    const probs  = softmax(logits);
+    probHistory.push(probs);
+    if (probHistory.length > SMOOTH_N) probHistory.shift();
+  }
+
+  badge.style.display = 'block';
+  if (noFaceFrames >= NO_FACE_GRACE || probHistory.length === 0) {
+    badge.textContent = 'No face';
+    badge.className   = 'noface';
+    conf.textContent  = '';
+  } else {
+    const avg = [0, 0, 0];
+    for (const p of probHistory) for (let i = 0; i < 3; i++) avg[i] += p[i];
+    for (let i = 0; i < 3; i++) avg[i] /= probHistory.length;
+    let best = 0;
+    for (let i = 1; i < 3; i++) if (avg[i] > avg[best]) best = i;
+    badge.textContent = BADGE_LABEL[best];
+    badge.className   = BADGE_CLASS[best];
+    conf.textContent  = CLASS_NAMES
+      .map((n, i) => `${n}: ${(avg[i] * 100).toFixed(1)}%`)
+      .join('  ·  ');
+  }
+
+  if (running) requestAnimationFrame(loop);
+}
+
+btnStart.addEventListener('click', async () => {
+  if (stream) {
+    running = false;
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    video.srcObject = null;
+    badge.style.display = 'none';
+    conf.textContent = '';
+    probHistory.length = 0;
+    noFaceFrames = 0;
+    btnStart.textContent = 'Start camera';
+    btnStart.classList.remove('running');
+    statusEl.textContent = 'Models ready';
+  } else {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 640, height: 480 }
+      });
+      video.srcObject = stream;
+      await new Promise(r => video.onloadedmetadata = r);
+      running = true;
+      btnStart.textContent = 'Stop camera';
+      btnStart.classList.add('running');
+      statusEl.textContent = 'Running…';
+      loop();
+    } catch(e) {
+      statusEl.textContent = 'Camera error: ' + e.message;
+    }
+  }
+});
+
+init();
+</script>
+  </body>
+</html>
