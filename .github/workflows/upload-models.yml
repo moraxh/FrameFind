@@ -48,5 +48,6 @@ jobs:
             echo "Uploading $file → r2://framefind-models/$key"
             wrangler r2 object put "framefind-models/$key" \
               --file "$file" \
-              --content-type "application/octet-stream"
+              --content-type "application/octet-stream" \
+              --remote
           done
