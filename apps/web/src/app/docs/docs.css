@@ -10,3 +10,8 @@
 :root {
   --fd-layout-width: 100vw;
 }
+
+/* Improve markdown bold contrast in dark mode docs pages. */
+.dark #nd-docs-layout .prose :where(strong):not(:where([class~="not-prose"] *)) {
+  color: rgb(245 245 245);
+}

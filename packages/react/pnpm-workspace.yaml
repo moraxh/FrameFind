@@ -1,0 +1,3 @@
+minimumReleaseAgeExclude:
+  - '@framefind/core@0.4.0'
+  - '@framefind/utils@0.3.0'

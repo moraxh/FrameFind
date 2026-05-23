@@ -10,9 +10,9 @@ interface PipelineStep {
 const STEPS: PipelineStep[] = [
   { icon: Video,      label: "Video Frame",        sublabel: "Camera · Image · Node" },
   { icon: Crosshair,  label: "MediaPipe",           sublabel: "468 facial landmarks" },
-  { icon: Crop,       label: "ROI Crop",            sublabel: "Eye · Face region" },
-  { icon: Cpu,        label: "ONNX Inference",      sublabel: "WASM · WebGPU" },
-  { icon: BarChart2,  label: "Result",              sublabel: "Probability · Angles" },
+  { icon: Crop,       label: "ROI / Features",      sublabel: "Eye · Face bbox · EAR" },
+  { icon: Cpu,        label: "ONNX · Geometry",     sublabel: "WASM · WebGPU · solvePnP" },
+  { icon: BarChart2,  label: "Result",              sublabel: "Class · Angles · Event" },
 ];
 
 export function PipelineDiagramSection() {
@@ -84,9 +84,9 @@ export function PipelineDiagramSection() {
         <FadeIn delay={0.2}>
           <div className="mt-12 grid sm:grid-cols-3 gap-4 text-center">
             {[
-              { value: "~27ms", label: "median inference" },
+              { value: "5", label: "live detectors" },
               { value: "0 bytes", label: "data sent to server" },
-              { value: "6.2MB", label: "glasses model" },
+              { value: "<30ms", label: "typical inference" },
             ].map(({ value, label }) => (
               <div key={label} className="p-4 rounded-xl border border-neutral-800 bg-neutral-900/30">
                 <p className="text-2xl font-bold text-white font-mono">{value}</p>

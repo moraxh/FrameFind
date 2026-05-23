@@ -9,12 +9,12 @@ importers:
   .:
     dependencies:
       '@framefind/utils':
-        specifier: 0.2.1
-        version: 0.2.1
-    devDependencies:
+        specifier: 0.3.0
+        version: 0.3.0
       '@mediapipe/tasks-vision':
         specifier: ^0.10.35
         version: 0.10.35
+    devDependencies:
       '@tensorflow-models/face-landmarks-detection':
         specifier: ^1.0.6
         version: 1.0.6(@mediapipe/face_mesh@0.4.1633559619)(@tensorflow-models/face-detection@1.0.3(@mediapipe/face_detection@0.4.1646425229)(@tensorflow/tfjs-backend-webgl@4.22.0(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-converter@4.22.0(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-backend-webgl@4.22.0(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-converter@4.22.0(@tensorflow/tfjs-core@4.22.0))(@tensorflow/tfjs-core@4.22.0)
@@ -36,8 +36,8 @@ importers:
 
 packages:
 
-  '@framefind/utils@0.2.1':
-    resolution: {integrity: sha512-+mgVypSEWUEqMQCAvh9qMGG9vBeneED47lOmSRoVq+3D7YhoQEse/fVquUmfUuBoNh7CVQq28GZupXoNlP0Izw==}
+  '@framefind/utils@0.3.0':
+    resolution: {integrity: sha512-vINpLTl15hpAvsBkR6mlpDSXua8faoCgf6jFFrWebQUWTcQLp83zlV6Fk/lAdXtY3XQkzJ9r7yl2ThBFXvOS3g==}
 
   '@mapbox/node-pre-gyp@1.0.9':
     resolution: {integrity: sha512-aDF3S3rK9Q2gey/WAttUlISduDItz5BU3306M9Eyv6/oS40aMprnopshtlKTykxRNIBEZuRMaZAnbrQ4QtKGyw==}
@@ -647,7 +647,7 @@ packages:
 
 snapshots:
 
-  '@framefind/utils@0.2.1': {}
+  '@framefind/utils@0.3.0': {}
 
   '@mapbox/node-pre-gyp@1.0.9':
     dependencies:

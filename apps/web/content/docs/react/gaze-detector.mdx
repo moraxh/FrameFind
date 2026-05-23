@@ -1,0 +1,185 @@
+---
+title: useGazeDetector
+description: Estimate where the user is looking from iris position — pure geometry, no extra model.
+---
+
+`useGazeDetector` tracks the iris position inside each eye bounding box and returns a normalized gaze vector plus a 3×3 screen region. It uses the iris landmarks already produced by MediaPipe FaceLandmarker — no ONNX model is downloaded.
+
+Gaze is distinct from head pose: you can have a steady head and still move your eyes. The detector subtracts the head's yaw and pitch contribution so the output reflects eye-only direction.
+
+## Basic usage
+
+```tsx
+"use client";
+
+import { useGazeDetector } from "@framefind/react";
+
+export function GazeCamera() {
+  const { videoRef, result, loading } = useGazeDetector();
+
+  return (
+    <div>
+      <video ref={videoRef} autoPlay playsInline muted />
+      {loading && <p>Loading landmarker...</p>}
+      {result?.faceDetected && (
+        <p>
+          Looking {result.region} ({result.x.toFixed(2)}, {result.y.toFixed(2)})
+        </p>
+      )}
+    </div>
+  );
+}
+```
+
+Wire the camera yourself — the hook only processes frames from whatever `srcObject` is on the video element.
+
+## The result object
+
+```ts
+type GazeRegion =
+  | "top-left"  | "top"    | "top-right"
+  | "left"      | "center" | "right"
+  | "bottom-left" | "bottom" | "bottom-right";
+
+type GazeResult = {
+  x: number;                          // -1 (far left) .. 1 (far right), head-compensated
+  y: number;                          // -1 (up) .. 1 (down), head-compensated
+  region: GazeRegion;                 // 3×3 region nearest to (x, y)
+  rawX: number;                       // iris-in-eye ratio before head-pose compensation
+  rawY: number;
+  screen: { x: number; y: number };   // approximate screen coords in [0, 1]
+  faceDetected: boolean;
+};
+```
+
+The accuracy is approximate — no per-user calibration is performed. The output is well-suited for region-level signals (proctoring, "looking away", gestural input) rather than pixel-level eye-typing.
+
+## Options
+
+```ts
+useGazeDetector({
+  // Face landmarker assets (defaults to FrameFind CDN).
+  faceLandmarkerModelUrl: "...",
+  mediapipeWasmPath: "...",
+
+  // MediaPipe confidence thresholds.
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+  minTrackingConfidence: 0.5,
+
+  // Multipliers applied to yaw/pitch (degrees) when compensating head pose.
+  // Increase if head rotation bleeds into the gaze signal. Default: 0.012
+  yawCompensation: 0.012,
+  pitchCompensation: 0.012,
+
+  // Half-width of the central "center" region in normalized gaze units. Default: 0.18
+  deadzone: 0.18,
+
+  // Flip gaze horizontally — set true for mirrored selfie cameras. Default: true.
+  mirrorX: true,
+  // Flip gaze vertically. Default: false.
+  mirrorY: false,
+
+  // Smoothing — One Euro filter by default for low-lag tracking.
+  smoothing: { type: "oneEuro" },
+
+  // Prefer GPU delegate. Default: true.
+  preferGpu: true,
+
+  // Limit inferences per second. Default: 0 (every frame).
+  inferenceIntervalMs: 0,
+
+  // Throttle React state updates. Default: 0 (update every frame).
+  uiUpdateIntervalMs: 0,
+});
+```
+
+## Sharing a video element
+
+Pair gaze with head pose or blink on the same `<video>`:
+
+```tsx
+import { useRef } from "react";
+import { useGazeDetector, useHeadPoseDetector } from "@framefind/react";
+
+export function GazeAndPose() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { result: gaze } = useGazeDetector({ videoRef });
+  const { result: pose } = useHeadPoseDetector({ videoRef });
+
+  return <video ref={videoRef} autoPlay playsInline muted />;
+}
+```
+
+## Pausing and resuming
+
+```tsx
+const { videoRef, result, pause, resume, reset } = useGazeDetector();
+
+pause();
+resume();
+reset(); // clears smoothing filter state
+```
+
+## Calibration
+
+For pixel-accurate screen mapping, run a 5–9 point calibration. The hook collects samples and fits an affine `raw → screen` transform internally.
+
+```tsx
+const {
+  addCalibrationSample,
+  calibrate,
+  clearCalibration,
+  isCalibrated,
+  calibrationSampleCount,
+} = useGazeDetector();
+
+// While showing a dot at the target on screen:
+addCalibrationSample(targetX, targetY); // each axis in [0, 1]
+
+// After collecting at least 3 samples (5–9 recommended):
+const cal = calibrate();
+if (cal) {
+  // Subsequent `result.screen` / `result.x` / `result.y` are now calibrated.
+}
+
+// To re-run from scratch:
+clearCalibration();
+```
+
+A minimal flow looks like this:
+
+```tsx
+const TARGETS = [
+  { x: 0.1, y: 0.1 }, { x: 0.5, y: 0.1 }, { x: 0.9, y: 0.1 },
+  { x: 0.1, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.9, y: 0.5 },
+  { x: 0.1, y: 0.9 }, { x: 0.5, y: 0.9 }, { x: 0.9, y: 0.9 },
+];
+
+async function runCalibration() {
+  for (const t of TARGETS) {
+    showDot(t.x, t.y);
+    await sleep(900);                // let the user fixate
+    for (let i = 0; i < 8; i++) {    // average several frames per target
+      addCalibrationSample(t.x, t.y);
+      await sleep(80);
+    }
+  }
+  calibrate();
+}
+```
+
+To persist a calibration across sessions, store the result of `calibrate()` in `localStorage` and restore it with `setCalibration(cal)` on next mount.
+
+### Sample capture rules
+
+- Capture only when `result.faceDetected` is true.
+- The detector uses the **head-pose-compensated raw gaze** at the moment of capture, so the user can shift slightly between points.
+- 3 samples is the minimum (matches the 6 affine parameters); 9 distributed across the screen produces a noticeably more stable fit.
+
+## Limitations
+
+- **Eyewear refraction.** Strong prescription lenses can shift iris position in the image. Pair with `useGlassesDetector` if you want to gate gaze-based decisions on this.
+- **Lighting.** Iris tracking degrades under uneven or low light, just like any landmark-based pipeline.
+- **Affine model.** Calibration assumes a roughly linear mapping. Extreme corners of large displays may still drift; for those, capture more samples in the affected zones.

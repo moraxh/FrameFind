@@ -1,4 +1,4 @@
 {
   "title": "@framefind/core",
-  "pages": ["glasses-detector", "blink-detector", "head-pose-detector"]
+  "pages": ["glasses-detector", "blink-detector", "head-pose-detector", "mask-detector", "gaze-detector"]
 }

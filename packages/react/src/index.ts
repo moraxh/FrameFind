@@ -1,5 +1,14 @@
 export type { Point2D } from "@framefind/core";
-export type { DetectionResult, HeadPoseResult } from "@framefind/utils";
+export type {
+  DetectionResult,
+  GazeCalibration,
+  GazeCalibrationSample,
+  GazeRegion,
+  GazeResult,
+  HeadPoseResult,
+  MaskClass,
+  MaskDetectionResult,
+} from "@framefind/utils";
 export type {
   BlinkStateResult as BlinkState,
   UseBlinkDetectorOptions,
@@ -16,4 +25,14 @@ export type {
   UseHeadPoseDetectorResult,
 } from "./useHeadPoseDetector.js";
 export { useHeadPoseDetector } from "./useHeadPoseDetector.js";
+export type {
+  UseMaskDetectorOptions,
+  UseMaskDetectorResult,
+} from "./useMaskDetector.js";
+export { useMaskDetector } from "./useMaskDetector.js";
+export type {
+  UseGazeDetectorOptions,
+  UseGazeDetectorResult,
+} from "./useGazeDetector.js";
+export { useGazeDetector } from "./useGazeDetector.js";
 export { useVideoFrameDetect } from "./useVideoFrameDetect.js";

@@ -1,0 +1,145 @@
+---
+title: GazeDetector
+description: Pure-geometry gaze direction from MediaPipe iris landmarks.
+---
+
+`GazeDetector` (from `@framefind/core`) is the underlying class that `useGazeDetector` wraps. It uses the iris landmarks (478-point set) MediaPipe FaceLandmarker already produces, so no ONNX model is fetched.
+
+The algorithm is simple geometry:
+
+1. Locate the iris center (landmark 468 for left eye, 473 for right).
+2. Map it to `[-1, 1]` inside the eye's bounding box (outer/inner corners + top/bottom lids).
+3. Average both eyes.
+4. Subtract a scaled version of head yaw/pitch to remove head-pose contamination.
+5. Apply a One Euro filter for low-lag smoothing.
+
+## Browser usage
+
+```ts
+import { GazeDetector } from "@framefind/core";
+
+const detector = new GazeDetector({});
+await detector.load();
+
+// on each frame:
+const result = detector.detectFromVideo(videoEl);
+console.log(result.x, result.y, result.region);
+
+// when done:
+detector.dispose();
+```
+
+`detectFromVideo` is synchronous — it returns the latest gaze immediately, no canvas needed.
+
+## Node.js
+
+`GazeDetectorNode` does not run MediaPipe itself — it takes landmarks you already produced (e.g. via `@tensorflow-models/face-landmarks-detection` with `refineLandmarks: true`, which yields the 478-point iris-augmented set).
+
+```ts
+import { GazeDetectorNode } from "@framefind/core/node";
+
+const gaze = new GazeDetectorNode({});
+
+const result = gaze.detectFromLandmarks(landmarks, yawDeg, pitchDeg);
+console.log(result.region, result.screen);
+```
+
+If you don't have head-pose angles, pass `0, 0` — the result will simply not be head-compensated.
+
+## Options
+
+```ts
+new GazeDetector({
+  // Face landmarker assets.
+  faceLandmarkerModelUrl: "...",
+  mediapipeWasmPath: "...",
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+  minTrackingConfidence: 0.5,
+
+  // Multipliers applied to head yaw/pitch (in degrees) before subtracting from gaze.
+  // Tune these on your camera setup — typical values 0.008 – 0.02.
+  yawCompensation: 0.012,
+  pitchCompensation: 0.012,
+
+  // Half-width of the central "center" region. Default: 0.18
+  deadzone: 0.18,
+
+  // Flip gaze horizontally — set true for mirrored selfie cameras. Default: true.
+  mirrorX: true,
+  // Flip gaze vertically. Default: false.
+  mirrorY: false,
+
+  // Smoothing. Default: One Euro.
+  smoothing: { type: "oneEuro" },
+
+  // Prefer GPU delegate. Default: true, falls back to CPU.
+  preferGpu: true,
+
+  // Minimum ms between inferences in a frame loop. Default: 0.
+  inferenceIntervalMs: 0,
+});
+```
+
+## Result type
+
+```ts
+type GazeRegion =
+  | "top-left"   | "top"    | "top-right"
+  | "left"       | "center" | "right"
+  | "bottom-left" | "bottom" | "bottom-right";
+
+type GazeResult = {
+  x: number;
+  y: number;
+  region: GazeRegion;
+  rawX: number;
+  rawY: number;
+  screen: { x: number; y: number };
+  faceDetected: boolean;
+};
+```
+
+`x` and `y` are the head-compensated, smoothed gaze in `[-1, 1]`. `rawX`/`rawY` are the unfiltered iris-in-eye ratio if you want to apply your own compensation. `screen` maps `(x, y)` linearly to `[0, 1]` so it can be used as a normalized cursor position.
+
+## Calibration
+
+The detector ships with a per-user affine calibrator. After 5–9 samples it fits a 2×3 transform that maps the head-compensated raw gaze directly to screen coordinates in `[0, 1]`.
+
+```ts
+// Show a dot at (0.1, 0.1) and have the user fixate for ~1 second.
+detector.addCalibrationSample(0.1, 0.1);
+// ...repeat for the rest of the grid...
+
+const cal = detector.calibrate();
+if (cal) {
+  console.log("Affine fit:", cal.xRow, cal.yRow, cal.sampleCount);
+}
+
+detector.isCalibrated();        // boolean
+detector.getCalibration();      // GazeCalibration | null
+detector.setCalibration(cal);   // inject a saved calibration
+detector.clearCalibration();    // drop samples + active transform
+```
+
+`addCalibrationSample` uses the most recent detector output, so call it only after `detectFromVideo` has produced a `faceDetected: true` result. The minimum sample count is 3 (the number of affine parameters per axis); 9 is recommended for screen-spanning accuracy.
+
+To persist across sessions, save the `GazeCalibration` object — it is plain JSON.
+
+```ts
+type GazeCalibration = {
+  xRow: [number, number, number];  // [a, b, c] — screenX = a*rawX + b*rawY + c
+  yRow: [number, number, number];  // [d, e, f] — screenY = d*rawX + e*rawY + f
+  sampleCount: number;
+};
+```
+
+For lower-level use (e.g. averaging multiple frames per target before pushing a sample), `pushCalibrationSample({ rawX, rawY, targetX, targetY })` accepts explicit raw values.
+
+## Cleanup
+
+```ts
+detector.dispose();
+```
+
+Releases the MediaPipe face landmarker, resets smoothing, and clears any active calibration.

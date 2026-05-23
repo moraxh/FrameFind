@@ -1,0 +1,119 @@
+---
+title: MaskDetector
+description: ONNX-based three-way face-mask classifier for browser and Node.
+---
+
+`MaskDetector` (from `@framefind/core`) is the underlying class that `useMaskDetector` wraps. Use it when you need to run mask detection outside React — in a vanilla JS app, a canvas pipeline, or a web worker.
+
+The model is a three-class classifier:
+
+- `with_mask` — face covering correctly worn
+- `without_mask` — no face covering
+- `incorrect_mask` — mask present but worn improperly (nose exposed, chin only, etc.)
+
+## Browser usage
+
+```ts
+import { MaskDetector } from "@framefind/core";
+
+const detector = new MaskDetector({});
+await detector.load();
+
+// on each frame:
+const result = await detector.detectFromVideoFrame(videoEl, offscreenCanvas);
+console.log(result.label, result.probabilities);
+
+// when done:
+detector.dispose();
+```
+
+`detectFromVideoFrame` copies the frame into the supplied canvas, crops the face bounding box (with asymmetric vertical padding for mouth/chin context), resizes to 112×112, normalizes with ImageNet statistics, and runs ONNX inference. The same canvas can be reused across calls.
+
+## Detect from a canvas directly
+
+```ts
+const result = await detector.detectFromCanvas(canvas);
+```
+
+Use this for static images — draw your image onto a canvas first, then pass it in.
+
+## Node.js
+
+Import from the node subpath:
+
+```ts
+import { MaskDetectorNode } from "@framefind/core/node";
+
+const detector = new MaskDetectorNode({
+  modelPath: "./models/mask.onnx",
+});
+await detector.load();
+
+const result = await detector.detectFromImagePath("./photo.jpg");
+```
+
+`MaskDetectorNode` uses `onnxruntime-node` instead of `onnxruntime-web`. The model path can be a local file or an HTTP(S) URL — remote models are cached in the OS temp directory on first use.
+
+`detectFromImagePath` requires the optional `sharp` peer dependency:
+
+```bash
+npm i sharp
+```
+
+If `@tensorflow/tfjs-node` and `@tensorflow-models/face-landmarks-detection` are installed, the detector automatically crops the face bounding box from landmarks. Otherwise it falls back to a center crop.
+
+## Options
+
+```ts
+new MaskDetector({
+  // ONNX model URL. Defaults to the FrameFind CDN.
+  modelUrl: "https://cdn.framefind.moraxh.dev/models/mask/v1/mask.onnx",
+
+  // ONNX Runtime WASM directory. Defaults to the FrameFind CDN.
+  wasmPaths: "https://cdn.framefind.moraxh.dev/onnxruntime-web/1.25.1/dist/",
+
+  // Threshold applied to the smoothed `with_mask` probability for the `mask` boolean.
+  // Default: 0.5
+  threshold: 0.5,
+
+  // Frames to average. Default: 8
+  smoothingWindow: 8,
+
+  // Auto-run MediaPipe face landmarker for face-bbox crop. Default: true
+  autoLandmarks: true,
+  faceLandmarkerModelUrl: "...",
+  mediapipeWasmPath: "...",
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+
+  // Minimum ms between inferences in a frame loop. Default: 0
+  inferenceIntervalMs: 0,
+
+  // Prefer GPU delegate. Default: true, falls back to CPU
+  preferGpu: true,
+});
+```
+
+## Result type
+
+```ts
+type MaskClass = "with_mask" | "without_mask" | "incorrect_mask";
+
+type MaskDetectionResult = {
+  label: MaskClass;
+  probability: number;
+  probabilities: [number, number, number];
+  mask: boolean;
+  faceDetected: boolean;
+};
+```
+
+The `probabilities` tuple is ordered `[with_mask, without_mask, incorrect_mask]`. `label` is the argmax of the smoothed tuple. `probability` is the smoothed probability of the predicted class.
+
+## Cleanup
+
+Always call `dispose()` when finished. It releases the ONNX session and the MediaPipe face landmarker:
+
+```ts
+detector.dispose();
+```

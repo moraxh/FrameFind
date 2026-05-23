@@ -1,6 +1,6 @@
 {
   "name": "@framefind/core",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "description": "Glasses detection core — browser and Node.js",
   "type": "module",
   "repository": {
@@ -31,7 +31,7 @@
     "typecheck": "tsc -p tsconfig.browser.json --noEmit && tsc -p tsconfig.node.json --noEmit"
   },
   "dependencies": {
-    "@framefind/utils": "0.2.1",
+    "@framefind/utils": "0.3.0",
     "@mediapipe/tasks-vision": "^0.10.35"
   },
   "peerDependencies": {

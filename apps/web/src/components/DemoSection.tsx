@@ -40,7 +40,37 @@ const BlinkDemo = dynamic(
   }
 );
 
-type DemoTab = "glasses" | "headpose" | "blink";
+const MaskDemo = dynamic(
+  () => import("./MaskDemo").then((m) => ({ default: m.MaskDemo })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-neutral-950 border border-neutral-800/60 rounded-2xl aspect-[4/3] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-cyan-400/60 border-t-transparent rounded-full animate-spin" />
+          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">Initializing</span>
+        </div>
+      </div>
+    ),
+  }
+);
+
+const GazeDemo = dynamic(
+  () => import("./GazeDemo").then((m) => ({ default: m.GazeDemo })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="bg-neutral-950 border border-neutral-800/60 rounded-2xl aspect-[4/3] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-cyan-400/60 border-t-transparent rounded-full animate-spin" />
+          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">Initializing</span>
+        </div>
+      </div>
+    ),
+  }
+);
+
+type DemoTab = "glasses" | "headpose" | "blink" | "mask" | "gaze";
 
 // ─── Result Overlay ────────────────────────────────────────────────────────────
 
@@ -377,6 +407,34 @@ const INFO: Record<DemoTab, { title: string; desc: string; stats: { label: strin
       { label: "Drop-rate gate", text: "Rejects slow eyelid movement to eliminate false positives" },
     ],
   },
+  mask: {
+    title: "Mask Detection",
+    desc: "Three-way classifier: mask, no mask, or improperly worn. Runs fully on-device.",
+    stats: [
+      { label: "Classes", value: "3" },
+      { label: "Input", value: "112", unit: "px" },
+      { label: "Backend", value: "WASM" },
+    ],
+    bullets: [
+      { label: "Three-way", text: "with_mask / without_mask / incorrect_mask softmax output" },
+      { label: "Face-bbox crop", text: "Crops landmark bounding box with extra chin padding for mask cues" },
+      { label: "Smoothed", text: "Per-class probabilities averaged over a sliding window" },
+    ],
+  },
+  gaze: {
+    title: "Gaze Estimation",
+    desc: "Pure-geometry iris tracking. Outputs a normalized vector and a 3×3 screen region — no extra model download.",
+    stats: [
+      { label: "Model", value: "0", unit: "B" },
+      { label: "Regions", value: "3×3" },
+      { label: "Overhead", value: "<1", unit: "ms" },
+    ],
+    bullets: [
+      { label: "Geometry-only", text: "Iris position inside eye bbox → normalized [-1, 1] gaze vector" },
+      { label: "Head-compensated", text: "Subtracts yaw/pitch contribution so output reflects eye-only direction" },
+      { label: "Smoothed", text: "One Euro filter: responsive when scanning, stable when fixating" },
+    ],
+  },
 };
 
 // ─── DemoSection ───────────────────────────────────────────────────────────────
@@ -386,6 +444,8 @@ export function DemoSection() {
   const [mounted, setMounted] = useState(false);
   const [headPoseActivated, setHeadPoseActivated] = useState(false);
   const [blinkActivated, setBlinkActivated] = useState(false);
+  const [maskActivated, setMaskActivated] = useState(false);
+  const [gazeActivated, setGazeActivated] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
   if (!mounted) return null;
@@ -394,6 +454,8 @@ export function DemoSection() {
     setActiveTab(tab);
     if (tab === "headpose") setHeadPoseActivated(true);
     if (tab === "blink") setBlinkActivated(true);
+    if (tab === "mask") setMaskActivated(true);
+    if (tab === "gaze") setGazeActivated(true);
   };
 
   const info = INFO[activeTab];
@@ -425,6 +487,8 @@ export function DemoSection() {
                     { id: "glasses" as const, label: "Glasses" },
                     { id: "headpose" as const, label: "Head Pose" },
                     { id: "blink" as const, label: "Blink" },
+                    { id: "mask" as const, label: "Mask" },
+                    { id: "gaze" as const, label: "Gaze" },
                   ]}
                   value={activeTab}
                   onChange={handleTabChange}
@@ -458,6 +522,10 @@ export function DemoSection() {
                     <HeadPoseDemo />
                   ) : activeTab === "blink" && blinkActivated ? (
                     <BlinkDemo />
+                  ) : activeTab === "mask" && maskActivated ? (
+                    <MaskDemo />
+                  ) : activeTab === "gaze" && gazeActivated ? (
+                    <GazeDemo />
                   ) : null}
                 </motion.div>
               </AnimatePresence>

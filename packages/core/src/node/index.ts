@@ -1,4 +1,13 @@
-export type { DetectionResult, HeadPoseResult } from "@framefind/utils";
+export type {
+	DetectionResult,
+	GazeCalibration,
+	GazeCalibrationSample,
+	GazeRegion,
+	GazeResult,
+	HeadPoseResult,
+	MaskClass,
+	MaskDetectionResult,
+} from "@framefind/utils";
 export type {
 	BlinkDetectorNodeOptions,
 	BlinkEventType,
@@ -12,3 +21,7 @@ export type {
 	HeadPoseSmoothing,
 } from "./headPoseDetector.js";
 export { HeadPoseDetectorNode } from "./headPoseDetector.js";
+export type { MaskDetectorNodeOptions } from "./maskDetector.js";
+export { MaskDetectorNode } from "./maskDetector.js";
+export type { GazeDetectorNodeOptions } from "./gazeDetector.js";
+export { GazeDetectorNode } from "./gazeDetector.js";

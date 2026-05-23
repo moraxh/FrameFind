@@ -1,0 +1,145 @@
+---
+title: useMaskDetector
+description: Detect whether a person is wearing a face mask, and whether it is worn correctly.
+---
+
+`useMaskDetector` runs an ONNX classifier on every video frame and returns one of three labels: `with_mask`, `without_mask`, or `incorrect_mask`. Model loading, frame loop, ROI cropping, and per-class smoothing are handled internally.
+
+## Basic usage
+
+```tsx
+"use client";
+
+import { useMaskDetector } from "@framefind/react";
+
+export function MaskCamera() {
+  const { videoRef, result, loading } = useMaskDetector();
+
+  return (
+    <div>
+      <video ref={videoRef} autoPlay playsInline muted />
+      {loading && <p>Loading model...</p>}
+      {result && (
+        <p>
+          {result.faceDetected
+            ? `${result.label} (${Math.round(result.probability * 100)}%)`
+            : "No face detected"}
+        </p>
+      )}
+    </div>
+  );
+}
+```
+
+Wire the camera yourself — the hook only processes frames from whatever `srcObject` is on the video element.
+
+```tsx
+async function startCamera(videoEl: HTMLVideoElement) {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  videoEl.srcObject = stream;
+  videoEl.play();
+}
+```
+
+## The result object
+
+```ts
+type MaskClass = "with_mask" | "without_mask" | "incorrect_mask";
+
+type MaskDetectionResult = {
+  label: MaskClass;                   // smoothed argmax class
+  probability: number;                // smoothed probability of the predicted class
+  probabilities: [number, number, number]; // [with_mask, without_mask, incorrect_mask]
+  mask: boolean;                      // shortcut: smoothed with_mask >= threshold
+  faceDetected: boolean;
+};
+```
+
+`mask` is a convenience boolean derived from `probabilities[0]` (the `with_mask` channel) using the `threshold` option. When `faceDetected` is false the last smoothed values are returned, so the UI does not flicker between frames where the landmarker briefly loses tracking.
+
+## Options
+
+```ts
+useMaskDetector({
+  // Model location. Defaults to the FrameFind CDN.
+  modelUrl: "https://cdn.framefind.moraxh.dev/models/mask/v1/mask.onnx",
+
+  // ONNX Runtime WASM files location. Defaults to the FrameFind CDN.
+  wasmPaths: "https://cdn.framefind.moraxh.dev/onnxruntime-web/1.25.1/dist/",
+
+  // Threshold applied to the smoothed `with_mask` probability for the `mask` boolean.
+  // Default: 0.5
+  threshold: 0.5,
+
+  // Number of frames to average for smoothing. Default: 8
+  smoothingWindow: 8,
+
+  // Whether to run detection at all. Default: true
+  enabled: true,
+
+  // Minimum milliseconds between inferences. Default: 0 (every frame)
+  inferenceIntervalMs: 0,
+
+  // MediaPipe face landmarker settings
+  minFaceDetectionConfidence: 0.5,
+  minFacePresenceConfidence: 0.5,
+
+  // Prefer GPU inference via WebGL delegate. Default: true, falls back to CPU
+  preferGpu: true,
+
+  // Throttle React state updates. Default: 0 (update every frame)
+  uiUpdateIntervalMs: 0,
+});
+```
+
+## Detect from a static image
+
+```tsx
+const { detectImage, result } = useMaskDetector();
+
+async function checkImage(imageEl: HTMLImageElement) {
+  const canvas = document.createElement("canvas");
+  canvas.width = imageEl.naturalWidth;
+  canvas.height = imageEl.naturalHeight;
+  canvas.getContext("2d")!.drawImage(imageEl, 0, 0);
+  await detectImage(canvas);
+}
+```
+
+## Pausing and resuming
+
+```tsx
+const { videoRef, result, isPaused, pause, resume, reset } = useMaskDetector();
+
+pause();
+resume();
+reset(); // clears smoothing window
+```
+
+## Sharing a video element
+
+Pair the mask detector with other detectors on the same `<video>` element by sharing a ref:
+
+```tsx
+import { useRef } from "react";
+import { useMaskDetector, useHeadPoseDetector } from "@framefind/react";
+
+export function MaskAndPose() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const { result: mask } = useMaskDetector({ videoRef });
+  const { result: pose } = useHeadPoseDetector({ videoRef });
+
+  return <video ref={videoRef} autoPlay playsInline muted />;
+}
+```
+
+When `videoRef` is provided the hook does not create its own — attach the shared ref to the element yourself.
+
+## Reducing re-renders
+
+```tsx
+const { result } = useMaskDetector({ uiUpdateIntervalMs: 200 });
+```
+
+Inference still runs at full frame rate; only the React state updates are throttled.
