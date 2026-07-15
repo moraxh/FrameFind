@@ -50,7 +50,7 @@ export function TabSwitcher<T extends string = string>({
 
   if (variant === "pill") {
     return (
-      <div role="tablist" aria-label={ariaLabel} className="flex gap-2">
+      <div role="tablist" aria-label={ariaLabel} className="flex flex-wrap gap-2">
         {tabs.map((tab, idx) => (
           <button
             key={tab.id}

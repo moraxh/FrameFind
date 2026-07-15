@@ -158,7 +158,7 @@ export function QuickStartSection() {
               <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5">
                 1
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white mb-3">
                   Install packages
                 </p>
@@ -209,7 +209,7 @@ export function QuickStartSection() {
               <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5">
                 2
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white mb-3">
                   Initialize a detector
                 </p>
@@ -229,7 +229,7 @@ export function QuickStartSection() {
               <div className="flex-shrink-0 w-6 h-6 rounded-full border border-cyan-700 bg-cyan-950/30 flex items-center justify-center text-[10px] font-bold text-cyan-400 mt-0.5">
                 3
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white mb-3">
                   Read results in your render loop
                 </p>
