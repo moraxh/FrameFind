@@ -143,14 +143,14 @@ export function QuickStartSection() {
       <div className="max-w-6xl mx-auto flex flex-col gap-16">
         <FadeIn>
           <div>
-            <div className="text-[11px] font-mono text-cyan-500 uppercase tracking-widest mb-3">
-              Quick start
+            <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-[#e87148]">
+              Frame 05 / Quick start
             </div>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-6">
-              Up and running in minutes.
+              From install to first result.
             </h2>
             <p className="text-sm text-neutral-400 mb-8 leading-relaxed">
-              Three steps from install to first detection result.
+              Choose your runtime, initialize a detector and start reading typed results.
             </p>
 
             {/* Step 1 */}
@@ -160,7 +160,7 @@ export function QuickStartSection() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white mb-3">
-                  Install packages
+                  Choose a runtime and install the package
                 </p>
                 <div className="space-y-4">
                   <div className="flex items-center gap-1.5 mb-4 bg-neutral-900/50 p-1 w-fit rounded-lg border border-neutral-800">
@@ -211,7 +211,7 @@ export function QuickStartSection() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white mb-3">
-                  Initialize a detector
+                  Create the detector
                 </p>
                 <CodeBlock
                   language="tsx"
@@ -231,7 +231,7 @@ export function QuickStartSection() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white mb-3">
-                  Read results in your render loop
+                  Read the result in your application
                 </p>
                 <CodeBlock
                   language="tsx"

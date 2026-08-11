@@ -31,7 +31,7 @@ export function Footer() {
           >
             Jorge Mora
           </a>
-          {" "}— blame him if it breaks
+          {" "}— built for private, real-time interfaces
         </p>
       </div>
     </footer>

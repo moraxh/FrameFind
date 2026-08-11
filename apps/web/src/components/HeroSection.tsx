@@ -75,7 +75,6 @@ function loop() {
 
   requestAnimationFrame(loop);
 }
-
 video.addEventListener('play', loop, { once: true });`,
   },
   node: {
@@ -257,14 +256,14 @@ export function HeroSection() {
 
             {/* Headline */}
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-white mb-5 leading-[1.05]">
-              On-device face detection
+              Face signals, processed where they happen.
               <br />
-              <span className="text-neutral-500">for the web.</span>
+              <span className="text-neutral-500">In the browser or Node.js.</span>
             </h1>
 
             <p className="text-base md:text-lg text-neutral-400 mb-10 max-w-xl mx-auto leading-relaxed">
-              Glasses, head pose, blink — running fully local in the browser or
-              Node.js via ONNX. Zero backend. Zero tracking.
+              Add gaze, blink, head-pose and face-attribute signals to your product
+              without streaming camera frames to a server.
             </p>
 
             {/* CTA row */}
@@ -290,19 +289,22 @@ export function HeroSection() {
             <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-sm text-neutral-600">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-neutral-600" />
-                <span>Privacy-first</span>
+                <span>Data stays on-device</span>
               </div>
               <span className="hidden sm:block text-neutral-800">·</span>
               <div className="flex items-center gap-1.5">
                 <Zap className="w-4 h-4 text-neutral-600" />
-                <span>Sub-100ms inference</span>
+                <span>Sub-2 ms model inference*</span>
               </div>
               <span className="hidden sm:block text-neutral-800">·</span>
               <div className="flex items-center gap-1.5">
                 <Cpu className="w-4 h-4 text-neutral-600" />
-                <span>WASM · WebGPU · Node</span>
+                <span>WASM · WebGPU · Node.js</span>
               </div>
             </div>
+            <p className="mt-3 text-[10px] text-neutral-600">
+              *ONNX model-only benchmark; full frame latency depends on the device and runtime.
+            </p>
           </div>
         </FadeIn>
 

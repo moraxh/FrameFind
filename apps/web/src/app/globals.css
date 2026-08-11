@@ -6,8 +6,27 @@
   --font-mono: var(--font-mono);
 }
 
+:root {
+  --ff-background: #0a0a0a;
+  --ff-text: #f5f5f5;
+  --ff-cyan: #22d3ee;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--ff-background);
+}
+
+::selection {
+  background: rgba(53, 217, 245, 0.28);
+  color: var(--ff-text);
+}
+
 :focus-visible {
-  outline: 2px solid #22d3ee;
+  outline: 2px solid var(--ff-cyan);
   outline-offset: 2px;
   border-radius: 4px;
 }

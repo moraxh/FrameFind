@@ -18,11 +18,13 @@ const HeadPoseDemo = dynamic(
       <div className="bg-neutral-950 border border-neutral-800/60 rounded-2xl aspect-[4/3] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 border-2 border-cyan-400/60 border-t-transparent rounded-full animate-spin" />
-          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">Initializing</span>
+          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">
+            Initializing
+          </span>
         </div>
       </div>
     ),
-  }
+  },
 );
 
 const BlinkDemo = dynamic(
@@ -33,11 +35,13 @@ const BlinkDemo = dynamic(
       <div className="bg-neutral-950 border border-neutral-800/60 rounded-2xl aspect-[4/3] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 border-2 border-cyan-400/60 border-t-transparent rounded-full animate-spin" />
-          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">Initializing</span>
+          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">
+            Initializing
+          </span>
         </div>
       </div>
     ),
-  }
+  },
 );
 
 const MaskDemo = dynamic(
@@ -48,11 +52,13 @@ const MaskDemo = dynamic(
       <div className="bg-neutral-950 border border-neutral-800/60 rounded-2xl aspect-[4/3] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 border-2 border-cyan-400/60 border-t-transparent rounded-full animate-spin" />
-          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">Initializing</span>
+          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">
+            Initializing
+          </span>
         </div>
       </div>
     ),
-  }
+  },
 );
 
 const GazeDemo = dynamic(
@@ -63,11 +69,13 @@ const GazeDemo = dynamic(
       <div className="bg-neutral-950 border border-neutral-800/60 rounded-2xl aspect-[4/3] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 border-2 border-cyan-400/60 border-t-transparent rounded-full animate-spin" />
-          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">Initializing</span>
+          <span className="text-[11px] text-neutral-600 font-mono tracking-widest uppercase">
+            Initializing
+          </span>
         </div>
       </div>
     ),
-  }
+  },
 );
 
 type DemoTab = "glasses" | "headpose" | "blink" | "mask" | "gaze";
@@ -99,7 +107,9 @@ function ResultOverlay({
         <span className="text-lg leading-none">
           {noFace ? "🫣" : isGlasses ? "👓" : "😊"}
         </span>
-        <span className={`text-xs font-medium ${noFace ? "text-yellow-300" : "text-white"}`}>
+        <span
+          className={`text-xs font-medium ${noFace ? "text-yellow-300" : "text-white"}`}
+        >
           {label}
         </span>
         <span className="text-[11px] font-mono text-neutral-500 tabular-nums w-8 text-right">
@@ -124,11 +134,20 @@ function GlassesDemo() {
   const noFaceFramesRef = useRef(0);
   const NO_FACE_GRACE = 6;
 
-  const { videoRef, detectImage, result, inferenceTime, loading: modelLoading } =
-    useGlassesDetector({ enabled: true });
+  const {
+    videoRef,
+    detectImage,
+    result,
+    inferenceTime,
+    loading: modelLoading,
+  } = useGlassesDetector({ enabled: true });
 
-  const [displayResult, setDisplayResult] = useState<DetectionResult | null>(null);
-  const [displayInferenceTime, setDisplayInferenceTime] = useState<number | null>(null);
+  const [displayResult, setDisplayResult] = useState<DetectionResult | null>(
+    null,
+  );
+  const [displayInferenceTime, setDisplayInferenceTime] = useState<
+    number | null
+  >(null);
   const lastInferenceUpdateRef = useRef<number>(0);
 
   useEffect(() => {
@@ -154,7 +173,11 @@ function GlassesDemo() {
   const startCamera = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
       });
       setStream(mediaStream);
       setImage(null);
@@ -243,7 +266,11 @@ function GlassesDemo() {
               className={`w-full h-full object-cover ${!stream ? "hidden" : ""}`}
             />
             {!stream && (
-              <EmptyState icon={<Camera className="w-8 h-8" />} label="Camera is off" hint="Click start to begin" />
+              <EmptyState
+                icon={<Camera className="w-8 h-8" />}
+                label="Camera is off"
+                hint="Click start to begin"
+              />
             )}
           </>
         ) : image ? (
@@ -255,7 +282,11 @@ function GlassesDemo() {
             className="object-contain"
           />
         ) : (
-          <EmptyState icon={<Upload className="w-8 h-8" />} label="No image" hint="Upload a photo to test" />
+          <EmptyState
+            icon={<Upload className="w-8 h-8" />}
+            label="No image"
+            hint="Upload a photo to test"
+          />
         )}
 
         <canvas ref={canvasRef} style={{ display: "none" }} />
@@ -270,7 +301,9 @@ function GlassesDemo() {
               className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-20"
             >
               <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-[11px] text-neutral-400 font-mono tracking-widest uppercase">Loading model</span>
+              <span className="text-[11px] text-neutral-400 font-mono tracking-widest uppercase">
+                Loading model
+              </span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -278,7 +311,10 @@ function GlassesDemo() {
         {/* Result overlay */}
         <AnimatePresence>
           {displayResult && isActive && !modelLoading && (
-            <ResultOverlay result={displayResult} inferenceTime={displayInferenceTime} />
+            <ResultOverlay
+              result={displayResult}
+              inferenceTime={displayInferenceTime}
+            />
           )}
         </AnimatePresence>
       </div>
@@ -307,7 +343,10 @@ function GlassesDemo() {
               className="hidden"
               aria-label="Upload image for glasses detection"
             />
-            <DemoButton onClick={() => fileInputRef.current?.click()} variant="start">
+            <DemoButton
+              onClick={() => fileInputRef.current?.click()}
+              variant="start"
+            >
               <Upload className="w-3.5 h-3.5" />
               Choose Image
             </DemoButton>
@@ -364,75 +403,125 @@ function DemoButton({
 
 // ─── Info panels ───────────────────────────────────────────────────────────────
 
-const INFO: Record<DemoTab, { title: string; desc: string; stats: { label: string; value: string; unit?: string }[]; bullets: { label: string; text: string }[] }> = {
+const INFO: Record<
+  DemoTab,
+  {
+    title: string;
+    desc: string;
+    stats: { label: string; value: string; unit?: string }[];
+    bullets: { label: string; text: string }[];
+  }
+> = {
   glasses: {
-    title: "Glasses Detection",
-    desc: "Runs entirely in your browser. No server calls, no data leaves your device.",
+    title: "Glasses detection",
+    desc: "See a live confidence score while the model runs locally in your browser.",
     stats: [
-      { label: "Inference", value: "~27", unit: "ms" },
-      { label: "Model size", value: "6.2", unit: "MB" },
+      { label: "Input", value: "112", unit: "px" },
+      { label: "Model size", value: "6.1", unit: "MiB" },
       { label: "Backend", value: "WASM" },
     ],
     bullets: [
-      { label: "Private", text: "All processing happens locally — zero network requests" },
-      { label: "Lightweight", text: "6.2 MB model runs on any modern device" },
-      { label: "Accurate", text: "Binary classifier with calibrated probability score" },
+      {
+        label: "Private",
+        text: "The camera frame is analyzed locally; it is not sent to a FrameFind server",
+      },
+      { label: "Benchmarkable", text: "Run the repository benchmark to measure your own hardware" },
+      {
+        label: "Accurate",
+        text: "Returns a typed boolean result and a calibrated probability score",
+      },
     ],
   },
   headpose: {
-    title: "Head Pose Estimation",
-    desc: "Real-time yaw, pitch, and roll from facial landmarks. No extra model download.",
+    title: "Head-pose estimation",
+    desc: "Read yaw, pitch and roll from landmarks already computed for the face.",
     stats: [
       { label: "Angles", value: "3", unit: "axes" },
       { label: "Smoothing", value: "1€ filter" },
       { label: "Overhead", value: "<1", unit: "ms" },
     ],
     bullets: [
-      { label: "Matrix-based", text: "Facial transformation matrix → ZYX Euler angles" },
-      { label: "Smooth", text: "One Euro filter: fast when moving, smooth when still" },
-      { label: "Zero-cost", text: "Runs synchronously on landmarks already computed" },
+      {
+        label: "Matrix-based",
+        text: "Converts the facial transformation matrix into ZYX Euler angles",
+      },
+      {
+        label: "Smooth",
+        text: "A One Euro filter stays responsive while reducing jitter",
+      },
+      {
+        label: "Zero-cost",
+        text: "Adds the signal without requiring another model download",
+      },
     ],
   },
   blink: {
-    title: "Blink Detection",
-    desc: "Triple-signal blink detection using blendshapes, EAR geometry, and asymmetry — all on-device.",
+    title: "Blink detection",
+    desc: "Combine eye geometry and blendshape signals into reliable blink events.",
     stats: [
       { label: "Signals", value: "3" },
       { label: "Warmup", value: "500", unit: "ms" },
       { label: "Latency", value: "~30", unit: "fps" },
     ],
     bullets: [
-      { label: "Multi-signal", text: "Blendshapes + EAR geometry + asymmetry wink detection" },
-      { label: "Self-calibrating", text: "Per-eye baseline adapts to your face in under a second" },
-      { label: "Drop-rate gate", text: "Rejects slow eyelid movement to eliminate false positives" },
+      {
+        label: "Multi-signal",
+        text: "Combines blendshapes, eye aspect ratio and left/right asymmetry",
+      },
+      {
+        label: "Self-calibrating",
+        text: "Per-eye baselines adapt to the person in front of the camera",
+      },
+      {
+        label: "Drop-rate gate",
+        text: "Temporal gating helps separate blinks from slow eyelid movement",
+      },
     ],
   },
   mask: {
-    title: "Mask Detection",
-    desc: "Three-way classifier: mask, no mask, or improperly worn. Runs fully on-device.",
+    title: "Mask detection",
+    desc: "Classify a face as masked, unmasked or wearing a mask incorrectly.",
     stats: [
       { label: "Classes", value: "3" },
       { label: "Input", value: "112", unit: "px" },
       { label: "Backend", value: "WASM" },
     ],
     bullets: [
-      { label: "Three-way", text: "with_mask / without_mask / incorrect_mask softmax output" },
-      { label: "Face-bbox crop", text: "Crops landmark bounding box with extra chin padding for mask cues" },
-      { label: "Smoothed", text: "Per-class probabilities averaged over a sliding window" },
+      {
+        label: "Three-way",
+        text: "Returns one of three explicit labels with per-class probabilities",
+      },
+      {
+        label: "Face-bbox crop",
+        text: "Uses the face region and additional chin context for mask cues",
+      },
+      {
+        label: "Smoothed",
+        text: "Smooths probabilities over a short frame window to reduce flicker",
+      },
     ],
   },
   gaze: {
-    title: "Gaze Estimation",
-    desc: "Pure-geometry iris tracking. Outputs a normalized vector and a 3×3 screen region — no extra model download.",
+    title: "Gaze estimation",
+    desc: "Estimate where a person is looking using iris geometry and head-pose compensation.",
     stats: [
       { label: "Model", value: "0", unit: "B" },
       { label: "Regions", value: "3×3" },
       { label: "Overhead", value: "<1", unit: "ms" },
     ],
     bullets: [
-      { label: "Geometry-only", text: "Iris position inside eye bbox → normalized [-1, 1] gaze vector" },
-      { label: "Head-compensated", text: "Subtracts yaw/pitch contribution so output reflects eye-only direction" },
-      { label: "Smoothed", text: "One Euro filter: responsive when scanning, stable when fixating" },
+      {
+        label: "Geometry-only",
+        text: "Maps iris position inside the eye region to a normalized gaze vector",
+      },
+      {
+        label: "Head-compensated",
+        text: "Accounts for head movement so gaze direction remains more useful",
+      },
+      {
+        label: "Smoothed",
+        text: "Smooths movement while keeping the result responsive during scans",
+      },
     ],
   },
 };
@@ -447,7 +536,9 @@ export function DemoSection() {
   const [maskActivated, setMaskActivated] = useState(false);
   const [gazeActivated, setGazeActivated] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   if (!mounted) return null;
 
   const handleTabChange = (tab: DemoTab) => {
@@ -462,23 +553,24 @@ export function DemoSection() {
 
   return (
     <>
-      <section id="demo" className="py-24 px-6" aria-labelledby="demo-heading">
+      <section id="demo" className="px-6 py-28" aria-labelledby="demo-heading">
         <div className="max-w-6xl mx-auto">
           <FadeIn>
             <div className="mb-14">
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
                 <div>
-                  <p className="text-[11px] font-mono text-cyan-500 uppercase tracking-[0.2em] mb-3">
-                    Live demo
+                  <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-[#e87148]">
+                    Frame 01 / Live demo
                   </p>
                   <h2
                     id="demo-heading"
                     className="text-3xl md:text-4xl font-semibold tracking-tight text-white"
                   >
-                    Try it in your browser
+                    See every signal as it happens.
                   </h2>
                   <p className="text-neutral-500 mt-2 text-sm max-w-md">
-                    No account required. All inference runs locally on your device.
+                    Use your camera or upload an image. Every frame stays on
+                    your device.
                   </p>
                 </div>
 
@@ -550,7 +642,9 @@ export function DemoSection() {
                         <p className="text-lg font-semibold text-white tabular-nums leading-none">
                           {s.value}
                           {s.unit && (
-                            <span className="text-xs text-neutral-600 ml-0.5">{s.unit}</span>
+                            <span className="text-xs text-neutral-600 ml-0.5">
+                              {s.unit}
+                            </span>
                           )}
                         </p>
                         <p className="text-[10px] text-neutral-600 font-mono uppercase tracking-wider mt-1">
@@ -562,8 +656,12 @@ export function DemoSection() {
 
                   {/* Description */}
                   <div>
-                    <h3 className="text-base font-semibold text-white mb-1.5">{info.title}</h3>
-                    <p className="text-sm text-neutral-500 leading-relaxed">{info.desc}</p>
+                    <h3 className="text-base font-semibold text-white mb-1.5">
+                      {info.title}
+                    </h3>
+                    <p className="text-sm text-neutral-500 leading-relaxed">
+                      {info.desc}
+                    </p>
                   </div>
 
                   {/* Bullets */}
@@ -572,7 +670,9 @@ export function DemoSection() {
                       <li key={b.label} className="flex gap-3 items-start">
                         <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 flex-shrink-0" />
                         <span className="text-sm text-neutral-400 leading-snug">
-                          <strong className="text-neutral-200 font-medium">{b.label}.</strong>{" "}
+                          <strong className="text-neutral-200 font-medium">
+                            {b.label}.
+                          </strong>{" "}
                           {b.text}
                         </span>
                       </li>
@@ -586,10 +686,12 @@ export function DemoSection() {
                         <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-neutral-300 mb-0.5">100% On-device</p>
+                        <p className="text-xs font-medium text-neutral-300 mb-0.5">
+                          100% On-device
+                        </p>
                         <p className="text-xs text-neutral-600 leading-relaxed">
-                          Your camera feed and images are processed entirely in WebAssembly.
-                          Nothing is transmitted to any server.
+                          Your camera feed and images are processed entirely in
+                          WebAssembly. Nothing is transmitted to any server.
                         </p>
                       </div>
                     </div>

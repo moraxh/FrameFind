@@ -33,8 +33,8 @@ const LIVE_DETECTORS: Detector[] = [
     name: "Glasses",
     status: "live",
     pkg: "@framefind/core",
-    desc: "Detect eyewear presence with confidence score",
-    detail: "Eye-region crop → 6.2MB ONNX classifier → smoothed probability",
+    desc: "Identify whether a face is wearing glasses and return a calibrated confidence score.",
+    detail: "Eye-region crop → 6.1 MiB ONNX classifier → smoothed probability",
   },
   {
     id: "headpose",
@@ -42,7 +42,7 @@ const LIVE_DETECTORS: Detector[] = [
     name: "Head Pose",
     status: "live",
     pkg: "@framefind/core",
-    desc: "Real-time yaw, pitch, and roll estimation",
+    desc: "Track yaw, pitch and roll to understand how a face is oriented.",
     detail: "MediaPipe landmarks → solvePnP → ZYX Euler angles",
   },
   {
@@ -51,8 +51,9 @@ const LIVE_DETECTORS: Detector[] = [
     name: "Blink",
     status: "live",
     pkg: "@framefind/core",
-    desc: "Multi-signal blink detection with per-eye self-calibration",
-    detail: "Blendshapes + EAR geometry + asymmetry → drop-rate gate → blink event",
+    desc: "Detect blink events with adaptive per-eye calibration and temporal smoothing.",
+    detail:
+      "Blendshapes + EAR geometry + asymmetry → drop-rate gate → blink event",
   },
   {
     id: "mask",
@@ -60,8 +61,9 @@ const LIVE_DETECTORS: Detector[] = [
     name: "Mask",
     status: "live",
     pkg: "@framefind/core",
-    desc: "Three-way face-mask classifier with on-device inference",
-    detail: "Face-bbox crop → 112×112 ONNX classifier → softmax(with/without/incorrect)",
+    desc: "Classify a face as masked, unmasked or wearing a mask incorrectly.",
+    detail:
+      "Face-bbox crop → 112×112 ONNX classifier → softmax(with/without/incorrect)",
   },
   {
     id: "gaze",
@@ -69,8 +71,9 @@ const LIVE_DETECTORS: Detector[] = [
     name: "Gaze",
     status: "live",
     pkg: "@framefind/core",
-    desc: "Iris-based gaze direction with 3×3 screen region mapping",
-    detail: "Iris landmarks → eye-bbox ratio → head-pose compensation → gaze vector + region",
+    desc: "Estimate gaze direction and map it to a normalized screen region.",
+    detail:
+      "Iris landmarks → eye-bbox ratio → head-pose compensation → gaze vector + region",
   },
 ];
 
@@ -82,7 +85,8 @@ const ROADMAP_DETECTORS: Detector[] = [
     status: "phase2",
     pkg: "@framefind/core",
     desc: "Anti-spoof challenge for KYC and onboarding flows",
-    detail: "Blink + head turn + smile challenge → texture analysis → liveness score",
+    detail:
+      "Blink + head turn + smile challenge → texture analysis → liveness score",
   },
   {
     id: "talking",
@@ -91,7 +95,8 @@ const ROADMAP_DETECTORS: Detector[] = [
     status: "phase2",
     pkg: "@framefind/core",
     desc: "Mouth-open detector for meeting UX and speaker indicators",
-    detail: "Lip landmarks → Mouth Aspect Ratio → temporal gate → talking event",
+    detail:
+      "Lip landmarks → Mouth Aspect Ratio → temporal gate → talking event",
   },
   {
     id: "drowsiness",
@@ -100,7 +105,8 @@ const ROADMAP_DETECTORS: Detector[] = [
     status: "phase2",
     pkg: "@framefind/core",
     desc: "Fatigue scoring from blink rate, yawns, and eye closure",
-    detail: "Blink events + PERCLOS + yawn rate → temporal window → drowsiness score",
+    detail:
+      "Blink events + PERCLOS + yawn rate → temporal window → drowsiness score",
   },
   {
     id: "attention",
@@ -122,13 +128,36 @@ const ROADMAP_DETECTORS: Detector[] = [
   },
 ];
 
-const STATUS_CONFIG: Record<DetectorStatus, { label: string; className: string; dot: string }> = {
-  live:   { label: "Live",    className: "border-cyan-800/60 bg-cyan-950/30 text-cyan-400",          dot: "bg-cyan-400 animate-pulse" },
-  phase2: { label: "Phase 2", className: "border-violet-800/60 bg-violet-950/30 text-violet-400",    dot: "bg-violet-400" },
-  phase3: { label: "Phase 3", className: "border-neutral-700/60 bg-neutral-800/30 text-neutral-500", dot: "bg-neutral-600" },
+const STATUS_CONFIG: Record<
+  DetectorStatus,
+  { label: string; className: string; dot: string }
+> = {
+  live: {
+    label: "Live",
+    className: "border-cyan-800/60 bg-cyan-950/30 text-cyan-400",
+    dot: "bg-cyan-400 animate-pulse",
+  },
+  phase2: {
+    label: "Phase 2",
+    className: "border-violet-800/60 bg-violet-950/30 text-violet-400",
+    dot: "bg-violet-400",
+  },
+  phase3: {
+    label: "Phase 3",
+    className: "border-neutral-700/60 bg-neutral-800/30 text-neutral-500",
+    dot: "bg-neutral-600",
+  },
 };
 
-function DetectorCard({ detector, index, size = "normal" }: { detector: Detector; index: number; size?: "large" | "normal" }) {
+function DetectorCard({
+  detector,
+  index,
+  size = "normal",
+}: {
+  detector: Detector;
+  index: number;
+  size?: "large" | "normal";
+}) {
   const isLive = detector.status === "live";
   const status = STATUS_CONFIG[detector.status];
   const Icon = detector.icon;
@@ -159,36 +188,49 @@ function DetectorCard({ detector, index, size = "normal" }: { detector: Detector
           }`}
           aria-hidden="true"
         >
-          <Icon className={`${size === "large" ? "w-5 h-5" : "w-4 h-4"} ${isLive ? "text-cyan-400" : "text-neutral-600"}`} />
+          <Icon
+            className={`${size === "large" ? "w-5 h-5" : "w-4 h-4"} ${isLive ? "text-cyan-400" : "text-neutral-600"}`}
+          />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className={`${size === "large" ? "text-base" : "text-sm"} font-semibold ${isLive ? "text-white" : "text-neutral-500"}`}>
+            <span
+              className={`${size === "large" ? "text-base" : "text-sm"} font-semibold ${isLive ? "text-white" : "text-neutral-500"}`}
+            >
               {detector.name}
             </span>
             <span
               className={`inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-full border ${status.className}`}
               aria-label={`Status: ${status.label}`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} aria-hidden="true" />
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${status.dot}`}
+                aria-hidden="true"
+              />
               {status.label}
             </span>
           </div>
-          <code className={`text-[10px] font-mono ${isLive ? "text-neutral-500" : "text-neutral-700"}`}>
+          <code
+            className={`text-[10px] font-mono ${isLive ? "text-neutral-500" : "text-neutral-700"}`}
+          >
             {detector.pkg}
           </code>
         </div>
       </div>
 
-      <p className={`${size === "large" ? "text-sm" : "text-sm"} mb-3 leading-relaxed ${isLive ? "text-neutral-400" : "text-neutral-600"}`}>
+      <p
+        className={`${size === "large" ? "text-sm" : "text-sm"} mb-3 leading-relaxed ${isLive ? "text-neutral-400" : "text-neutral-600"}`}
+      >
         {detector.desc}
       </p>
 
-      <div className={`text-[11px] font-mono leading-relaxed p-2.5 rounded-md border ${
-        isLive
-          ? "text-neutral-500 bg-neutral-900/50 border-neutral-800"
-          : "text-neutral-700 bg-neutral-900/20 border-neutral-800/40"
-      }`}>
+      <div
+        className={`text-[11px] font-mono leading-relaxed p-2.5 rounded-md border ${
+          isLive
+            ? "text-neutral-500 bg-neutral-900/50 border-neutral-800"
+            : "text-neutral-700 bg-neutral-900/20 border-neutral-800/40"
+        }`}
+      >
         {detector.detail}
       </div>
     </motion.article>
@@ -197,20 +239,30 @@ function DetectorCard({ detector, index, size = "normal" }: { detector: Detector
 
 export function DetectorsSection() {
   return (
-    <section id="detectors" className="py-24 px-6 border-y border-neutral-800/40 bg-neutral-900/10" aria-labelledby="detectors-heading">
+    <section
+      id="detectors"
+      className="border-y border-neutral-800/60 bg-[#0d0d0c] px-6 py-28"
+      aria-labelledby="detectors-heading"
+    >
       <div className="max-w-6xl mx-auto">
         <FadeIn>
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-14">
             <div>
-              <div className="text-[11px] font-mono text-cyan-500 uppercase tracking-widest mb-3">
-                Modular Detectors
+              <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-[#e87148]">
+                Frame 02 / Modular detectors
               </div>
-              <h2 id="detectors-heading" className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-3 leading-tight">
-                One platform, many signals.
+              <h2
+                id="detectors-heading"
+                className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-3 leading-tight"
+              >
+                Pick the signal your interface needs.
               </h2>
               <p className="text-neutral-400 max-w-lg leading-relaxed">
-                All detectors live in <code className="text-cyan-500 text-xs">@framefind/core</code> with React hooks in{" "}
-                <code className="text-cyan-500 text-xs">@framefind/react</code>. Models stream from CDN — zero bundle cost.
+                All detectors live in{" "}
+                <code className="text-cyan-500 text-xs">@framefind/core</code>{" "}
+                with React hooks in{" "}
+                <code className="text-cyan-500 text-xs">@framefind/react</code>.
+                Choose the browser or Node.js runtime and keep the integration focused on the signals you actually use.
               </p>
             </div>
           </div>
@@ -218,8 +270,11 @@ export function DetectorsSection() {
 
         {/* Available now */}
         <FadeIn delay={0.05}>
-          <h3 className="text-xs font-mono text-cyan-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" aria-hidden="true" />
+          <h3 className="text-xs font-mono text-neutral-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <span
+              className="w-2 h-2 rounded-full bg-[#e87148]"
+              aria-hidden="true"
+            />
             Available now
           </h3>
         </FadeIn>
@@ -232,7 +287,10 @@ export function DetectorsSection() {
         {/* Roadmap */}
         <FadeIn delay={0.1}>
           <h3 className="text-xs font-mono text-neutral-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-neutral-600" aria-hidden="true" />
+            <span
+              className="w-2 h-2 rounded-full bg-neutral-600"
+              aria-hidden="true"
+            />
             On the roadmap
           </h3>
         </FadeIn>

@@ -4,23 +4,23 @@ import { FadeIn } from "./FadeIn";
 const PROBLEMS = [
   {
     icon: Zap,
-    title: "Cloud latency kills real-time UX",
-    desc: "Sending 30fps over the network to cloud APIs causes severe lag. On-device inference delivers sub-100ms feedback with zero round-trips.",
+    title: "Real-time interaction needs local feedback",
+    desc: "A network round-trip on every frame adds latency where it matters most. Local inference keeps feedback immediate and responsive.",
   },
   {
     icon: Lock,
-    title: "Face data shouldn't leave the device",
-    desc: "Transmitting user face data to servers creates GDPR/CCPA overhead and erodes user trust. FrameFind guarantees data never leaves the browser.",
+    title: "Camera data deserves a smaller surface",
+    desc: "FrameFind processes video in the browser or on your server-side runtime. Raw camera frames are not sent to a FrameFind service.",
   },
   {
     icon: Box,
-    title: "Heavy runtimes stay out of your bundle",
-    desc: "ONNX Runtime and MediaPipe are peer dependencies — loaded only when the detector needs them. Browser and Node builds ship as separate subpath exports, so your bundle stays minimal.",
+    title: "Use only the signals you need",
+    desc: "Detectors are modular and runtimes remain peer dependencies, so you can choose the browser or Node.js path that fits your application.",
   },
   {
     icon: Cloud,
-    title: "Models served from our own CDN",
-    desc: "Weights and WASM runtimes are hosted on cdn.framefind.moraxh.dev (Cloudflare R2) — version-pinned, immutable cache, no jsdelivr/Google Storage dependency. ONNX Runtime stays a peer dep so your bundle stays lean.",
+    title: "A small, typed integration",
+    desc: "Use the core classes directly or start with the React hooks. Every detector returns predictable typed results with faceDetected and confidence data.",
   },
 ];
 
@@ -29,11 +29,11 @@ export function ProblemSection() {
     <section className="py-24 px-6">
       <div className="max-w-6xl mx-auto">
         <FadeIn>
-          <div className="text-[11px] font-mono text-cyan-500 uppercase tracking-widest mb-3">
-            Why FrameFind
+          <div className="mb-3 text-[11px] font-medium uppercase tracking-[0.2em] text-[#e87148]">
+            Frame 03 / Why FrameFind
           </div>
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-12">
-            The problem with existing APIs.
+            A clearer foundation for camera features.
           </h2>
         </FadeIn>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
