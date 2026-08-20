@@ -39,8 +39,19 @@ export type UseGazeDetectorResult = {
 	resume: () => void;
 	reset: () => void;
 
-	/** Capture one calibration sample at the given screen target (each axis in [0, 1]). */
+	/**
+	 * Capture one calibration sample at the given screen target (each axis in [0, 1]).
+	 * @deprecated Prefer accumulateCalibrationFrame + commitCalibrationSample, which
+	 * average several frames into one sample instead of feeding raw per-frame noise
+	 * into the least-squares fit.
+	 */
 	addCalibrationSample: (targetX: number, targetY: number) => boolean;
+	/** Accumulate one frame toward a pending sample at the given screen target. */
+	accumulateCalibrationFrame: (targetX: number, targetY: number) => boolean;
+	/** Flush accumulated frames as a single averaged calibration sample. */
+	commitCalibrationSample: () => boolean;
+	/** Discard pending accumulated frames without committing them. */
+	discardAccumulatedFrames: () => void;
 	/** Fit the affine transform from collected samples. Returns null on failure. */
 	calibrate: () => GazeCalibration | null;
 	/** Inject a previously-saved calibration. */
@@ -205,6 +216,27 @@ export function useGazeDetector(
 		[],
 	);
 
+	const accumulateCalibrationFrame = useCallback(
+		(targetX: number, targetY: number) => {
+			const det = detectorRef.current;
+			if (!det) return false;
+			return det.accumulateCalibrationFrame(targetX, targetY);
+		},
+		[],
+	);
+
+	const commitCalibrationSample = useCallback(() => {
+		const det = detectorRef.current;
+		if (!det) return false;
+		const ok = det.commitCalibrationSample();
+		if (ok) setCalibrationSampleCount(det.getCalibrationSampleCount());
+		return ok;
+	}, []);
+
+	const discardAccumulatedFrames = useCallback(() => {
+		detectorRef.current?.discardAccumulatedFrames();
+	}, []);
+
 	const calibrate = useCallback(() => {
 		const det = detectorRef.current;
 		if (!det) return null;
@@ -239,6 +271,9 @@ export function useGazeDetector(
 		resume,
 		reset,
 		addCalibrationSample,
+		accumulateCalibrationFrame,
+		commitCalibrationSample,
+		discardAccumulatedFrames,
 		calibrate,
 		setCalibration,
 		clearCalibration,

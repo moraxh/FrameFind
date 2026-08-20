@@ -199,24 +199,21 @@ export class GazeDetector {
 		if (this.mirrorX) compRawX = -compRawX;
 		if (this.mirrorY) compRawY = -compRawY;
 
+		// Unclamped normalized gaze. Clamping is deferred until after smoothing so the
+		// filter never sees a saturated signal — otherwise gaze sticks at the edges
+		// whenever the mapping overshoots [-1, 1], which is common near screen corners.
 		let xNorm: number;
 		let yNorm: number;
-		let screenX: number;
-		let screenY: number;
 
 		if (this.calibration) {
 			// Calibrated path: affine maps directly to screen [0, 1].
 			const mapped = applyGazeCalibration(this.calibration, compRawX, compRawY);
-			screenX = clamp(mapped.x, 0, 1);
-			screenY = clamp(mapped.y, 0, 1);
-			xNorm = screenX * 2 - 1;
-			yNorm = screenY * 2 - 1;
+			xNorm = mapped.x * 2 - 1;
+			yNorm = mapped.y * 2 - 1;
 		} else {
-			// Uncalibrated path: clamp head-compensated value to [-1, 1].
-			xNorm = clamp(compRawX, -1, 1);
-			yNorm = clamp(compRawY, -1, 1);
-			screenX = (xNorm + 1) / 2;
-			screenY = (yNorm + 1) / 2;
+			// Uncalibrated path: head-compensated value is already in [-1, 1] units.
+			xNorm = compRawX;
+			yNorm = compRawY;
 		}
 
 		const tSec = now / 1000;
@@ -225,9 +222,12 @@ export class GazeDetector {
 		if (this.smoothingMode === "oneEuro") {
 			outX = this.xFilter.filter(xNorm, tSec);
 			outY = this.yFilter.filter(yNorm, tSec);
-			screenX = (outX + 1) / 2;
-			screenY = (outY + 1) / 2;
 		}
+
+		outX = clamp(outX, -1, 1);
+		outY = clamp(outY, -1, 1);
+		const screenX = (outX + 1) / 2;
+		const screenY = (outY + 1) / 2;
 
 		this.lastResult = {
 			x: outX,

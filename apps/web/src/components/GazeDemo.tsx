@@ -120,7 +120,9 @@ export function GazeDemo() {
     result,
     inferenceTime,
     loading: modelLoading,
-    addCalibrationSample,
+    accumulateCalibrationFrame,
+    commitCalibrationSample,
+    discardAccumulatedFrames,
     calibrate,
     clearCalibration,
     isCalibrated,
@@ -222,11 +224,16 @@ export function GazeDemo() {
     noFaceFramesRef.current = 0;
     setDisplayResult(null);
     clearTimer();
+    discardFramesRef.current();
     setCal({ phase: "idle" });
   };
 
-  const addCalibrationSampleRef = useRef(addCalibrationSample);
-  addCalibrationSampleRef.current = addCalibrationSample;
+  const accumulateFrameRef = useRef(accumulateCalibrationFrame);
+  accumulateFrameRef.current = accumulateCalibrationFrame;
+  const commitSampleRef = useRef(commitCalibrationSample);
+  commitSampleRef.current = commitCalibrationSample;
+  const discardFramesRef = useRef(discardAccumulatedFrames);
+  discardFramesRef.current = discardAccumulatedFrames;
   const calibrateRef = useRef(calibrate);
   calibrateRef.current = calibrate;
 
@@ -244,10 +251,13 @@ export function GazeDemo() {
 
       const tick = () => {
         if (cancelledRef.current) return;
-        addCalibrationSampleRef.current(target.x, target.y);
+        // Accumulate raw frames; they are averaged into a single sample on commit,
+        // so per-frame jitter does not enter the least-squares fit.
+        accumulateFrameRef.current(target.x, target.y);
         captureCountRef.current += 1;
 
         if (captureCountRef.current >= CAPTURE_FRAMES) {
+          commitSampleRef.current();
           const next = index + 1;
           if (next >= CAL_TARGETS.length) {
             calibrateRef.current();
@@ -272,6 +282,7 @@ export function GazeDemo() {
   const cancelCalibration = () => {
     cancelledRef.current = true;
     clearTimer();
+    discardFramesRef.current();
     setCal({ phase: "idle" });
     clearCalibration();
   };

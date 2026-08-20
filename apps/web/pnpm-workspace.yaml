@@ -1,4 +1,4 @@
 minimumReleaseAgeExclude:
-  - '@framefind/core@0.4.0'
-  - '@framefind/react@0.4.0'
+  - '@framefind/core@0.4.0 || 0.4.1'
+  - '@framefind/react@0.4.0 || 0.4.2'
   - '@framefind/utils@0.3.0'

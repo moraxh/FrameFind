@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@framefind/core':
-        specifier: 0.4.0
-        version: 0.4.0(onnxruntime-web@1.26.0)
+        specifier: 0.4.1
+        version: 0.4.1(onnxruntime-web@1.26.0)
       '@framefind/react':
-        specifier: 0.4.0
-        version: 0.4.0(onnxruntime-web@1.26.0)(react@19.2.4)
+        specifier: 0.4.2
+        version: 0.4.2(onnxruntime-web@1.26.0)(react@19.2.4)
       '@framefind/utils':
         specifier: 0.3.0
         version: 0.3.0
@@ -349,8 +349,8 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
-  '@framefind/core@0.4.0':
-    resolution: {integrity: sha512-Ebj7WVItx/mKif7Kp/oR+aSHhOgzZySMCg9WYHGQF0g9XV2Zyu5IWdCKt/Yd3fBMnH/YJ6u/KtnUYV+0Bjontg==}
+  '@framefind/core@0.4.1':
+    resolution: {integrity: sha512-3NxOrDjV15hLI4DAJO5b3so+DUmK6y9AlfWNRKAPiakghnGKo4S0bopY6YEiBPb6UoiTkJMR4XlIW7bc+GeKZw==}
     peerDependencies:
       '@tensorflow-models/face-landmarks-detection': '>=1.0.0'
       '@tensorflow/tfjs-node': '>=4.0.0'
@@ -366,8 +366,8 @@ packages:
       onnxruntime-web:
         optional: true
 
-  '@framefind/react@0.4.0':
-    resolution: {integrity: sha512-aTAg3hUDHbnyTVBm0YGsaSUsJWCFaEcKzth/lQ93tw24qwV8zZB4mNyGzxtW1x1eJE2kVMs9xDOldB6cKIvzhQ==}
+  '@framefind/react@0.4.2':
+    resolution: {integrity: sha512-IPdvUSrq/Wc48re0UIX13TF4MKE/B14PSQt7zN/8RYWcEKfMaqz+/NL66yCfie42EPV232Ov4XU4J9IoS0o3ag==}
     peerDependencies:
       onnxruntime-web: '>=1.25.1'
       react: '>=18.0.0'
@@ -2520,16 +2520,16 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@framefind/core@0.4.0(onnxruntime-web@1.26.0)':
+  '@framefind/core@0.4.1(onnxruntime-web@1.26.0)':
     dependencies:
       '@framefind/utils': 0.3.0
       '@mediapipe/tasks-vision': 0.10.35
     optionalDependencies:
       onnxruntime-web: 1.26.0
 
-  '@framefind/react@0.4.0(onnxruntime-web@1.26.0)(react@19.2.4)':
+  '@framefind/react@0.4.2(onnxruntime-web@1.26.0)(react@19.2.4)':
     dependencies:
-      '@framefind/core': 0.4.0(onnxruntime-web@1.26.0)
+      '@framefind/core': 0.4.1(onnxruntime-web@1.26.0)
       '@framefind/utils': 0.3.0
       onnxruntime-web: 1.26.0
       react: 19.2.4

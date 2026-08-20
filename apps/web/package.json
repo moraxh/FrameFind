@@ -10,8 +10,8 @@
     "format": "biome format --write"
   },
   "dependencies": {
-    "@framefind/core": "0.4.0",
-    "@framefind/react": "0.4.0",
+    "@framefind/core": "0.4.1",
+    "@framefind/react": "0.4.2",
     "@framefind/utils": "0.3.0",
     "@tailwindcss/typography": "^0.5.19",
     "@types/mdx": "^2.0.13",
