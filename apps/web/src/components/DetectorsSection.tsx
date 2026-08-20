@@ -134,8 +134,8 @@ const STATUS_CONFIG: Record<
 > = {
   live: {
     label: "Live",
-    className: "border-cyan-800/60 bg-cyan-950/30 text-cyan-400",
-    dot: "bg-cyan-400 animate-pulse",
+    className: "border-cyan-500/40 bg-cyan-600/[0.15] text-cyan-400",
+    dot: "bg-cyan-400 shadow-[0_0_6px_#22d3ee] animate-pulse",
   },
   phase2: {
     label: "Phase 2",
@@ -173,17 +173,17 @@ function DetectorCard({
         size === "large" ? "p-6" : "p-5"
       } ${
         isLive
-          ? "border-neutral-700/80 bg-[#111] hover:border-neutral-600 hover:bg-[#141414]"
+          ? "border-neutral-700/80 bg-[#111] hover:border-cyan-500/30 hover:bg-[#141414]"
           : "border-neutral-800/60 bg-[#0d0d0d]"
       }`}
     >
       <div className="flex items-start gap-4 mb-4">
         <div
-          className={`rounded-lg flex items-center justify-center shrink-0 ${
+          className={`rounded-xl flex items-center justify-center shrink-0 ${
             size === "large" ? "w-11 h-11" : "w-9 h-9"
           } ${
             isLive
-              ? "border border-cyan-900/50 bg-cyan-950/30"
+              ? "border border-cyan-500/30 bg-cyan-600/[0.15]"
               : "border border-neutral-800 bg-neutral-900"
           }`}
           aria-hidden="true"

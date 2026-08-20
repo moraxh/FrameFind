@@ -3,7 +3,7 @@ import { ScanEyeIcon } from "./ScanEyeIcon";
 
 export function Navbar() {
   return (
-    <header className="sticky top-0 z-50 bg-[#0a0a0a]/90 backdrop-blur-md border-b border-neutral-800/60">
+    <header className="sticky top-0 z-50 bg-[#0a0a0a]/85 backdrop-blur-md border-b border-white/[0.06]">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <ScanEyeIcon className="w-5 h-5 text-cyan-400" />

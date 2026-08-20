@@ -39,7 +39,7 @@ export function ProblemSection() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {PROBLEMS.map((problem, i) => (
             <FadeIn key={problem.title} delay={i * 0.08} className="h-full">
-              <div className="p-6 rounded-xl border border-neutral-800 bg-neutral-900/20 hover:border-neutral-700 transition-colors h-full flex flex-col">
+              <div className="p-6 rounded-xl border border-white/[0.08] bg-neutral-900/40 hover:border-cyan-500/25 transition-colors h-full flex flex-col">
                 <div className="w-9 h-9 rounded-lg border border-neutral-700 bg-neutral-800 flex items-center justify-center mb-5">
                   <problem.icon className="w-4 h-4 text-neutral-300" />
                 </div>

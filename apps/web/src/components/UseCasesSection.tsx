@@ -87,7 +87,7 @@ export function UseCasesSection() {
             return (
               <FadeIn key={uc.industry} delay={i * 0.07}>
                 <article
-                  className="p-6 rounded-xl border border-neutral-800 bg-neutral-900/30 hover:border-neutral-700 hover:bg-neutral-900/50 transition-colors"
+                  className="p-6 rounded-xl border border-white/[0.08] bg-neutral-900/30 hover:border-cyan-500/25 hover:bg-neutral-900/50 transition-colors"
                   aria-label={`${uc.industry}: ${uc.signal}`}
                 >
                   <div className="flex items-center gap-3 mb-4">

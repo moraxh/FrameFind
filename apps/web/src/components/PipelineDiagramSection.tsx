@@ -129,7 +129,7 @@ export function PipelineDiagramSection() {
             ].map(({ value, label }) => (
               <div
                 key={label}
-                className="p-4 rounded-xl border border-neutral-800 bg-neutral-900/30"
+                className="p-4 rounded-xl border border-white/[0.08] bg-neutral-900/50"
               >
                 <p className="text-2xl font-bold text-white font-mono">
                   {value}

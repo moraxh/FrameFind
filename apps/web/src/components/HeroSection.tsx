@@ -228,8 +228,10 @@ export function HeroSection() {
   const heroTabs: HeroTab[] = ["react", "browser", "node"];
 
   return (
-    <section className="pt-28 pb-24 px-6">
-      <div className="max-w-6xl mx-auto">
+    <section className="relative pt-28 pb-24 px-6 overflow-hidden">
+      <div className="ff-hero-glow" aria-hidden="true" />
+      <div className="ff-grid-fade" aria-hidden="true" />
+      <div className="relative max-w-6xl mx-auto">
         {/* Top — centered headline block */}
         <FadeIn>
           <div className="text-center mb-16">
@@ -244,9 +246,9 @@ export function HeroSection() {
                     href={pkg.npm}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-cyan-900/40 bg-cyan-950/20 text-cyan-400 text-[11px] font-mono tracking-wide hover:border-cyan-700/50 hover:bg-cyan-950/40 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-cyan-500/25 bg-cyan-500/[0.06] text-cyan-300 text-[11px] font-mono tracking-wide hover:border-cyan-400/40 hover:bg-cyan-500/10 transition-colors"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
                     {shortName}
                     {version ? ` v${version}` : ""}
                   </a>
@@ -255,10 +257,10 @@ export function HeroSection() {
             </div>
 
             {/* Headline */}
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-white mb-5 leading-[1.05]">
-              Face signals, processed where they happen.
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-5 leading-[1.04]">
+              Face signals,
               <br />
-              <span className="text-neutral-500">In the browser or Node.js.</span>
+              <span className="ff-heading-gradient">processed where they happen.</span>
             </h1>
 
             <p className="text-base md:text-lg text-neutral-400 mb-10 max-w-xl mx-auto leading-relaxed">
@@ -270,7 +272,7 @@ export function HeroSection() {
             <div className="flex flex-wrap justify-center gap-3 mb-10">
               <a
                 href="#demo"
-                className="h-10 px-6 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-white font-medium text-sm transition-colors flex items-center gap-2"
+                className="h-11 px-7 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 hover:from-cyan-300 hover:to-cyan-500 text-[#04222a] font-semibold text-sm transition-colors flex items-center gap-2 shadow-[0_8px_30px_rgba(34,211,238,0.25)]"
               >
                 Try the live demo
               </a>
@@ -278,7 +280,7 @@ export function HeroSection() {
                 href="https://github.com/moraxh/FrameFind"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="h-10 px-6 rounded-lg border border-neutral-700 bg-transparent text-white font-medium text-sm hover:bg-neutral-900 hover:border-neutral-600 transition-colors flex items-center gap-2"
+                className="h-11 px-7 rounded-xl border border-neutral-700 bg-transparent text-white font-semibold text-sm hover:bg-neutral-900 hover:border-neutral-600 transition-colors flex items-center gap-2"
               >
                 <GithubIcon className="w-4 h-4" />
                 GitHub
@@ -310,7 +312,7 @@ export function HeroSection() {
 
         {/* Bottom — unified code + install card */}
         <FadeIn delay={0.12}>
-          <div className="rounded-2xl border border-neutral-800 bg-[#0f0f0f] overflow-hidden shadow-2xl shadow-black/40">
+          <div className="rounded-2xl border border-neutral-800 bg-gradient-to-b from-[#101012] to-[#0b0b0c] overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6),0_0_0_1px_rgba(34,211,238,0.04)]">
             {/* Card header: code tabs left, env tabs right */}
             <div className="flex items-center justify-between border-b border-neutral-800 bg-[#0a0a0a]">
               {/* Code example tabs */}

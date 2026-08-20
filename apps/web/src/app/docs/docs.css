@@ -11,6 +11,73 @@
   --fd-layout-width: 100vw;
 }
 
+/* FrameFind docs theme — align Fumadocs tokens with the dark + cyan brand. */
+.dark {
+  --color-fd-background: #0a0a0a;
+  --color-fd-card: #0f0f0f;
+  --color-fd-foreground: #f5f5f5;
+  --color-fd-muted-foreground: #a3a3a3;
+  --color-fd-muted: #141414;
+  --color-fd-border: rgba(255, 255, 255, 0.08);
+  --color-fd-accent: rgba(8, 145, 178, 0.15);
+  --color-fd-accent-foreground: #22d3ee;
+  --color-fd-primary: #22d3ee;
+  --color-fd-primary-foreground: #04222a;
+  --color-fd-secondary: #171717;
+  --color-fd-secondary-foreground: #e5e5e5;
+  --color-fd-ring: #22d3ee;
+  --color-fd-popover: #0f0f0f;
+  --color-fd-popover-foreground: #f5f5f5;
+  --color-fd-card-foreground: #f5f5f5;
+}
+
+.dark #nd-sidebar {
+  background-color: #0a0a0a;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Fixed to the viewport (not the grid) so it reads the same on every docs
+   page regardless of sidebar/content height, and sits behind every grid
+   cell's own opaque background instead of being clipped by them. */
+.dark body:has(#nd-docs-layout)::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 500px;
+  background-image: radial-gradient(
+    ellipse 900px 500px at 30% -10%,
+    rgba(34, 211, 238, 0.08),
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark #nd-docs-layout {
+  position: relative;
+  z-index: 1;
+}
+
+/* Active sidebar item: cyan accent bar, matches the landing's live-signal dots. */
+.dark #nd-sidebar [data-active="true"] {
+  background-color: rgba(8, 145, 178, 0.12) !important;
+  color: #22d3ee !important;
+  border-left: 2px solid #22d3ee;
+}
+
+.dark #nd-docs-layout .prose code {
+  font-family: var(--font-mono);
+}
+
+/* Fumadocs' .prose has its own ch-based max-width, narrower than the
+   900px article column that code blocks (marked not-prose) fill — match it
+   to the article so prose text and code blocks share one column. */
+#nd-docs-layout .prose {
+  max-width: none;
+}
+
 /* Improve markdown bold contrast in dark mode docs pages. */
 .dark #nd-docs-layout .prose :where(strong):not(:where([class~="not-prose"] *)) {
   color: rgb(245 245 245);

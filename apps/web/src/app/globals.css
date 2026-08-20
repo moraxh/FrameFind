@@ -20,6 +20,43 @@ body {
   background: var(--ff-background);
 }
 
+.ff-hero-glow {
+  position: absolute;
+  top: -260px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1100px;
+  max-width: 160vw;
+  height: 620px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(34, 211, 238, 0.16) 0%,
+    rgba(34, 211, 238, 0.04) 45%,
+    transparent 72%
+  );
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.ff-grid-fade {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 900px 500px at 50% 0%, black, transparent);
+  -webkit-mask-image: radial-gradient(ellipse 900px 500px at 50% 0%, black, transparent);
+  pointer-events: none;
+}
+
+.ff-heading-gradient {
+  background: linear-gradient(135deg, #67e8f9 0%, #22d3ee 45%, #0891b2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 ::selection {
   background: rgba(53, 217, 245, 0.28);
   color: var(--ff-text);
